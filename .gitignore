@@ -1,0 +1,7 @@
+# User-created config assets (not part of the framework)
+BasicAnimeEye.asset
+BasicAnimeEye.asset.meta
+
+# OS / IDE
+.DS_Store
+Thumbs.db
