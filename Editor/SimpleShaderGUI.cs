@@ -237,7 +237,8 @@ namespace DocMe
         void DrawSection(MaterialEditor editor, Shader shader, Section section, SimpleShaderConfig config, string search)
         {
             bool searching = !string.IsNullOrEmpty(search);
-            if (searching && !SectionHasMatch(section, search))
+            bool sectionMatch = searching && SectionMatches(section, search);
+            if (searching && !sectionMatch && !SectionHasPropMatch(section, search))
                 return;
 
             if (!string.IsNullOrEmpty(section.category))
@@ -261,7 +262,7 @@ namespace DocMe
             {
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 foreach (var up in section.properties)
-                    if (!searching || PropMatches(up, search))
+                    if (!searching || sectionMatch || PropMatches(up, search))
                         DrawProperty(editor, up);
                 EditorGUILayout.EndVertical();
             }
@@ -359,42 +360,46 @@ namespace DocMe
 
         static void DrawBannerLinks(List<SimpleShaderConfig.Link> links)
         {
-            GUIStyle style = EditorStyles.miniButton;
-            float maxWidth = EditorGUIUtility.currentViewWidth - 20f;
-            const float spacing = 4f;
-            float rowWidth = 0f;
-            bool rowOpen = false;
+            GUIStyle linkStyle = LinkLabelStyle;
+            GUIStyle sepStyle = EditorStyles.label;
+            GUIContent sep = new GUIContent(" | ");
+            float sepWidth = sepStyle.CalcSize(sep).x;
+            float maxWidth = EditorGUIUtility.currentViewWidth - 24f;
 
-            foreach (var link in links)
+            int count = links.Count;
+            var contents = new GUIContent[count];
+            var widths = new float[count];
+            for (int i = 0; i < count; i++)
             {
-                GUIContent content = LinkContent(link.label, link.url, IconOf(link));
-                float width = style.CalcSize(content).x;
-
-                if (!rowOpen || rowWidth + spacing + width > maxWidth)
-                {
-                    if (rowOpen)
-                    {
-                        GUILayout.FlexibleSpace();
-                        EditorGUILayout.EndHorizontal();
-                    }
-                    EditorGUILayout.BeginHorizontal();
-                    rowWidth = 0f;
-                    rowOpen = true;
-                }
-                else
-                {
-                    rowWidth += spacing;
-                }
-
-                if (GUILayout.Button(content, style, GUILayout.Height(20f), GUILayout.Width(width)))
-                    OpenUrl(link.url);
-                rowWidth += width;
+                contents[i] = LinkContent(links[i].label, links[i].url, IconOf(links[i]));
+                widths[i] = linkStyle.CalcSize(contents[i]).x;
             }
 
-            if (rowOpen)
+            int start = 0;
+            while (start < count)
             {
+                int end = start;
+                float rowWidth = widths[start];
+                while (end + 1 < count && rowWidth + sepWidth + widths[end + 1] <= maxWidth)
+                {
+                    end++;
+                    rowWidth += sepWidth + widths[end];
+                }
+
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                for (int i = start; i <= end; i++)
+                {
+                    if (i > start)
+                        GUILayout.Label(sep, sepStyle, GUILayout.Width(sepWidth));
+                    if (GUILayout.Button(contents[i], linkStyle, GUILayout.Width(widths[i])))
+                        OpenUrl(links[i].url);
+                    EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+                }
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndHorizontal();
+
+                start = end + 1;
             }
         }
 
@@ -406,11 +411,16 @@ namespace DocMe
             editor.ShaderProperty(up.prop, new GUIContent(up.prop.displayName, up.tooltip));
         }
 
-        static bool PropMatches(UiProperty up, string search)
-            => up.prop.displayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
-            || up.prop.name.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
+        static bool TextMatches(string text, string search)
+            => !string.IsNullOrEmpty(text) && text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
 
-        static bool SectionHasMatch(Section section, string search)
+        static bool PropMatches(UiProperty up, string search)
+            => TextMatches(up.prop.displayName, search) || TextMatches(up.prop.name, search);
+
+        static bool SectionMatches(Section section, string search)
+            => TextMatches(section.name, search) || TextMatches(section.category, search);
+
+        static bool SectionHasPropMatch(Section section, string search)
         {
             foreach (var up in section.properties)
                 if (PropMatches(up, search))
@@ -421,15 +431,22 @@ namespace DocMe
         static string DrawSearchField(string search)
         {
             EditorGUILayout.BeginHorizontal();
-            search = EditorGUILayout.TextField("Search", search);
+
+            GUIContent icon = EditorGUIUtility.IconContent("Search Icon");
+            if (icon != null && icon.image != null)
+                GUILayout.Label(icon.image, GUILayout.Width(18f), GUILayout.Height(18f));
+
+            search = EditorGUILayout.TextField(search);
+
             using (new EditorGUI.DisabledScope(string.IsNullOrEmpty(search)))
             {
-                if (GUILayout.Button("Clear", EditorStyles.miniButton, GUILayout.Width(46f)))
+                if (GUILayout.Button("✕", EditorStyles.miniButton, GUILayout.Width(22f)))
                 {
                     search = "";
                     GUI.FocusControl(null);
                 }
             }
+
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.Space(2);
             return search;
