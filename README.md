@@ -27,7 +27,7 @@ block and an optional config asset. No per-shader inspector code.
 
 | Attribute | Effect |
 | --- | --- |
-| `[Foldable(Title)]` / `[Foldable(Title, closed)]` | Start a collapsible section on the next property |
+| `[Foldable(Title)]` / `[Foldable(Title, open)]` | Collapsible section on the next property, closed by default; add `open` to expand |
 | `[Category(Title)]` | Bold heading above a section |
 | `[Tip(text)]` | Tooltip on a property |
 | `[Help(text)]` | Info box above a property |
@@ -35,6 +35,14 @@ block and an optional config asset. No per-shader inspector code.
 
 Attribute arguments accept plain text only (a ShaderLab limitation), so URLs,
 paths, and icons live in the config asset and are edited in its Inspector.
+
+A search box at the top of the inspector filters properties live: type part of
+a property name and only matching properties show, each under its section.
+
+## Example
+
+`Example/ExampleShader.shader` with `Example/ExampleConfig.asset` shows every
+feature together. Assign the shader to a material and open it.
 
 ## Files
 
