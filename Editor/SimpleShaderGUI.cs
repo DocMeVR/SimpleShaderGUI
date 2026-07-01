@@ -390,6 +390,12 @@ namespace DocMe
                 widths[i] = iconWidth + textWidth;
             }
 
+            // Split into rows up front, then reserve a single rect and draw with manual
+            // positions. One layout allocation regardless of row count keeps IMGUI's layout
+            // and repaint passes consistent (variable BeginHorizontal groups would not).
+            var rowStart = new List<int>();
+            var rowEnd = new List<int>();
+            var rowWidths = new List<float>();
             int start = 0;
             while (start < count)
             {
@@ -400,36 +406,44 @@ namespace DocMe
                     end++;
                     rowWidth += sepWidth + widths[end];
                 }
+                rowStart.Add(start);
+                rowEnd.Add(end);
+                rowWidths.Add(rowWidth);
+                start = end + 1;
+            }
 
-                EditorGUILayout.BeginHorizontal();
-                GUILayout.FlexibleSpace();
-                for (int i = start; i <= end; i++)
+            Rect area = GUILayoutUtility.GetRect(maxWidth, rowStart.Count * rowHeight);
+
+            for (int row = 0; row < rowStart.Count; row++)
+            {
+                float y = area.y + row * rowHeight;
+                float x = area.x + Mathf.Max(0f, (area.width - rowWidths[row]) * 0.5f);
+                for (int i = rowStart[row]; i <= rowEnd[row]; i++)
                 {
-                    if (i > start)
-                        GUILayout.Label(sep, sepStyle, GUILayout.Width(sepWidth));
+                    if (i > rowStart[row])
+                    {
+                        GUI.Label(new Rect(x, y, sepWidth, rowHeight), sep, sepStyle);
+                        x += sepWidth;
+                    }
 
-                    Rect r = GUILayoutUtility.GetRect(widths[i], rowHeight, GUILayout.ExpandWidth(false));
-                    float cursorX = r.x;
+                    Rect itemRect = new Rect(x, y, widths[i], rowHeight);
+                    float cursorX = itemRect.x;
                     if (icons[i] != null)
                     {
-                        Rect iconRect = new Rect(cursorX, r.y + (r.height - iconSize.y) * 0.5f, iconSize.x, iconSize.y);
-                        GUI.DrawTexture(iconRect, icons[i], ScaleMode.ScaleToFit);
+                        GUI.DrawTexture(new Rect(cursorX, y + (rowHeight - iconSize.y) * 0.5f, iconSize.x, iconSize.y), icons[i], ScaleMode.ScaleToFit);
                         cursorX += iconSize.x + iconGap;
                     }
                     if (!string.IsNullOrEmpty(texts[i].text))
-                        GUI.Label(new Rect(cursorX, r.y, r.xMax - cursorX, r.height), texts[i], linkStyle);
+                        GUI.Label(new Rect(cursorX, y, itemRect.xMax - cursorX, rowHeight), texts[i], linkStyle);
 
-                    EditorGUIUtility.AddCursorRect(r, MouseCursor.Link);
-                    if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
+                    EditorGUIUtility.AddCursorRect(itemRect, MouseCursor.Link);
+                    if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
                     {
                         OpenUrl(links[i].url);
                         Event.current.Use();
                     }
+                    x += widths[i];
                 }
-                GUILayout.FlexibleSpace();
-                EditorGUILayout.EndHorizontal();
-
-                start = end + 1;
             }
         }
 
