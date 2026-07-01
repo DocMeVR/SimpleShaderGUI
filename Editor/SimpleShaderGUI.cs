@@ -330,18 +330,50 @@ namespace DocMe
             }
 
             if (hasLinks)
+                DrawBannerLinks(config.bannerLinks);
+
+            EditorGUILayout.Space(4);
+        }
+
+        static void DrawBannerLinks(List<SimpleShaderConfig.Link> links)
+        {
+            GUIStyle style = EditorStyles.miniButton;
+            float maxWidth = EditorGUIUtility.currentViewWidth - 20f;
+            const float spacing = 4f;
+            float rowWidth = 0f;
+            bool rowOpen = false;
+
+            foreach (var link in links)
             {
-                EditorGUILayout.BeginHorizontal();
-                foreach (var link in config.bannerLinks)
+                GUIContent content = LinkContent(link.label, link.url, IconOf(link));
+                float width = style.CalcSize(content).x;
+
+                if (!rowOpen || rowWidth + spacing + width > maxWidth)
                 {
-                    if (GUILayout.Button(LinkContent(link.label, link.url, IconOf(link)), EditorStyles.miniButton, GUILayout.Height(20f)))
-                        OpenUrl(link.url);
+                    if (rowOpen)
+                    {
+                        GUILayout.FlexibleSpace();
+                        EditorGUILayout.EndHorizontal();
+                    }
+                    EditorGUILayout.BeginHorizontal();
+                    rowWidth = 0f;
+                    rowOpen = true;
                 }
+                else
+                {
+                    rowWidth += spacing;
+                }
+
+                if (GUILayout.Button(content, style, GUILayout.Height(20f), GUILayout.Width(width)))
+                    OpenUrl(link.url);
+                rowWidth += width;
+            }
+
+            if (rowOpen)
+            {
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndHorizontal();
             }
-
-            EditorGUILayout.Space(4);
         }
 
         static void DrawProperty(MaterialEditor editor, UiProperty up)
