@@ -136,19 +136,21 @@ namespace DocMe
 
             DrawBanner(config);
             search = DrawSearchField(search);
-            bool searching = !string.IsNullOrEmpty(search);
+            bool sectionMode = search.StartsWith("s:", StringComparison.OrdinalIgnoreCase);
+            string query = (sectionMode ? search.Substring(2) : search).Trim();
+            bool searching = !string.IsNullOrEmpty(query);
 
             if (!searching)
                 foreach (var box in topBoxes)
                     DrawLinkBox(shader, box);
 
             foreach (var up in ctx.ungrouped)
-                if (!searching || PropMatches(up, search))
+                if (!searching || (!sectionMode && PropMatches(up, query)))
                     DrawProperty(editor, up);
 
             foreach (var s in ctx.sections)
             {
-                DrawSection(editor, shader, s, config, search);
+                DrawSection(editor, shader, s, config, query, sectionMode);
                 if (!searching && afterBoxes.TryGetValue(s.name, out var boxes))
                     foreach (var box in boxes)
                         DrawLinkBox(shader, box);
@@ -234,12 +236,15 @@ namespace DocMe
             return found;
         }
 
-        void DrawSection(MaterialEditor editor, Shader shader, Section section, SimpleShaderConfig config, string search)
+        void DrawSection(MaterialEditor editor, Shader shader, Section section, SimpleShaderConfig config, string query, bool sectionMode)
         {
-            bool searching = !string.IsNullOrEmpty(search);
-            bool sectionMatch = searching && SectionMatches(section, search);
-            if (searching && !sectionMatch && !SectionHasPropMatch(section, search))
-                return;
+            bool searching = !string.IsNullOrEmpty(query);
+            if (searching)
+            {
+                bool visible = sectionMode ? SectionMatches(section, query) : SectionHasPropMatch(section, query);
+                if (!visible)
+                    return;
+            }
 
             if (!string.IsNullOrEmpty(section.category))
                 DrawCategoryLabel(section.category);
@@ -262,7 +267,7 @@ namespace DocMe
             {
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 foreach (var up in section.properties)
-                    if (!searching || sectionMatch || PropMatches(up, search))
+                    if (!searching || sectionMode || PropMatches(up, query))
                         DrawProperty(editor, up);
                 EditorGUILayout.EndVertical();
             }
@@ -353,26 +358,36 @@ namespace DocMe
             }
 
             if (hasLinks)
-                DrawBannerLinks(config.bannerLinks);
+                DrawBannerLinks(config.bannerLinks, config.bannerIconSize);
 
             EditorGUILayout.Space(4);
         }
 
-        static void DrawBannerLinks(List<SimpleShaderConfig.Link> links)
+        static void DrawBannerLinks(List<SimpleShaderConfig.Link> links, Vector2 iconSize)
         {
+            if (iconSize.x < 1f || iconSize.y < 1f)
+                iconSize = new Vector2(16f, 16f);
+
             GUIStyle linkStyle = LinkLabelStyle;
             GUIStyle sepStyle = EditorStyles.label;
             GUIContent sep = new GUIContent(" | ");
             float sepWidth = sepStyle.CalcSize(sep).x;
             float maxWidth = EditorGUIUtility.currentViewWidth - 24f;
+            const float iconGap = 3f;
+            float rowHeight = Mathf.Max(EditorGUIUtility.singleLineHeight, iconSize.y);
 
             int count = links.Count;
-            var contents = new GUIContent[count];
+            var texts = new GUIContent[count];
+            var icons = new Texture[count];
             var widths = new float[count];
             for (int i = 0; i < count; i++)
             {
-                contents[i] = LinkContent(links[i].label, links[i].url, IconOf(links[i]));
-                widths[i] = linkStyle.CalcSize(contents[i]).x;
+                icons[i] = IconOf(links[i]);
+                string label = string.IsNullOrEmpty(links[i].label) && icons[i] == null ? links[i].url : links[i].label;
+                texts[i] = new GUIContent(label ?? "", string.IsNullOrEmpty(links[i].url) ? label : links[i].url);
+                float textWidth = string.IsNullOrEmpty(texts[i].text) ? 0f : linkStyle.CalcSize(texts[i]).x;
+                float iconWidth = icons[i] != null ? iconSize.x + (textWidth > 0f ? iconGap : 0f) : 0f;
+                widths[i] = iconWidth + textWidth;
             }
 
             int start = 0;
@@ -392,9 +407,24 @@ namespace DocMe
                 {
                     if (i > start)
                         GUILayout.Label(sep, sepStyle, GUILayout.Width(sepWidth));
-                    if (GUILayout.Button(contents[i], linkStyle, GUILayout.Width(widths[i])))
+
+                    Rect r = GUILayoutUtility.GetRect(widths[i], rowHeight, GUILayout.ExpandWidth(false));
+                    float cursorX = r.x;
+                    if (icons[i] != null)
+                    {
+                        Rect iconRect = new Rect(cursorX, r.y + (r.height - iconSize.y) * 0.5f, iconSize.x, iconSize.y);
+                        GUI.DrawTexture(iconRect, icons[i], ScaleMode.ScaleToFit);
+                        cursorX += iconSize.x + iconGap;
+                    }
+                    if (!string.IsNullOrEmpty(texts[i].text))
+                        GUI.Label(new Rect(cursorX, r.y, r.xMax - cursorX, r.height), texts[i], linkStyle);
+
+                    EditorGUIUtility.AddCursorRect(r, MouseCursor.Link);
+                    if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
+                    {
                         OpenUrl(links[i].url);
-                    EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+                        Event.current.Use();
+                    }
                 }
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndHorizontal();
@@ -434,7 +464,7 @@ namespace DocMe
 
             GUIContent icon = EditorGUIUtility.IconContent("Search Icon");
             if (icon != null && icon.image != null)
-                GUILayout.Label(icon.image, GUILayout.Width(18f), GUILayout.Height(18f));
+                GUILayout.Label(new GUIContent(icon.image, "Search properties. Prefix with s: to search sections."), GUILayout.Width(18f), GUILayout.Height(18f));
 
             search = EditorGUILayout.TextField(search);
 
@@ -585,17 +615,6 @@ namespace DocMe
 
         static Texture IconOf(SimpleShaderConfig.Link link)
             => link.icon != null ? link.icon : ResolveBuiltin(link.builtinIcon);
-
-        static GUIContent LinkContent(string label, string url, Texture icon)
-        {
-            bool hasLabel = !string.IsNullOrEmpty(label);
-            string tip = string.IsNullOrEmpty(url) ? label : url;
-
-            if (icon != null && hasLabel) return new GUIContent(" " + label, icon, tip);
-            if (icon != null) return new GUIContent(icon, tip);
-            if (hasLabel) return new GUIContent(label, tip);
-            return new GUIContent("link", tip);
-        }
 
         static Texture ResolveBuiltin(string name)
         {

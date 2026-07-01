@@ -60,6 +60,8 @@ namespace DocMe
         public float bannerHeight = 80f;
 
         [Header("Banner Buttons")]
+        [Tooltip("Max icon size (width, height) for the banner link icons.")]
+        public Vector2 bannerIconSize = new Vector2(16f, 16f);
         public List<Link> bannerLinks = new List<Link>();
 
         [Header("Link Sections")]
