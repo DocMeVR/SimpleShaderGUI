@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace DocMe
 {
     // Shader author vocabulary (attributes in the Properties block):
-    //   [Foldable(Title)] / [Foldable(Title, closed)]   collapsible section
+    //   [Foldable(Title)] / [Foldable(Title, open)]     collapsible section (closed by default)
     //   [Category(Title)]                                bold super-header above a section
     //   [Tip(text)]                                      tooltip (plain text)
     //   [Help(text)]                                     info box above the property (plain text)
@@ -55,7 +55,7 @@ namespace DocMe
         static readonly Dictionary<string, Action<string[], BuildContext>> Handlers =
             new Dictionary<string, Action<string[], BuildContext>>
         {
-            ["Foldable"] = (a, c) => { if (a.Length > 0) c.StartGroup(a[0], a.Length > 1 && a[1] == "closed"); },
+            ["Foldable"] = (a, c) => { if (a.Length > 0) c.StartGroup(a[0], a.Length <= 1 || a[1] != "open"); },
             ["Category"] = (a, c) => { if (c.currentGroup != null && a.Length > 0) c.currentGroup.category = a[0]; },
             ["Tip"]      = (a, c) => { if (c.currentProperty != null && a.Length > 0) c.currentProperty.tooltip = a[0]; },
             ["Help"]     = (a, c) => { if (c.currentProperty != null && a.Length > 0) c.currentProperty.help = a[0]; },
@@ -63,6 +63,7 @@ namespace DocMe
         };
 
         readonly Dictionary<string, string[]> attributeMap = new Dictionary<string, string[]>();
+        string search = "";
 
         static readonly Dictionary<string, Texture> iconCache = new Dictionary<string, Texture>();
         static readonly Dictionary<string, string[]> iconAliases = new Dictionary<string, string[]>
@@ -134,23 +135,28 @@ namespace DocMe
             BucketLinkBoxes(config, ctx.sections, topBoxes, bottomBoxes, afterBoxes);
 
             DrawBanner(config);
+            search = DrawSearchField(search);
+            bool searching = !string.IsNullOrEmpty(search);
 
-            foreach (var box in topBoxes)
-                DrawLinkBox(shader, box);
+            if (!searching)
+                foreach (var box in topBoxes)
+                    DrawLinkBox(shader, box);
 
             foreach (var up in ctx.ungrouped)
-                DrawProperty(editor, up);
+                if (!searching || PropMatches(up, search))
+                    DrawProperty(editor, up);
 
             foreach (var s in ctx.sections)
             {
-                DrawSection(editor, shader, s, config);
-                if (afterBoxes.TryGetValue(s.name, out var boxes))
+                DrawSection(editor, shader, s, config, search);
+                if (!searching && afterBoxes.TryGetValue(s.name, out var boxes))
                     foreach (var box in boxes)
                         DrawLinkBox(shader, box);
             }
 
-            foreach (var box in bottomBoxes)
-                DrawLinkBox(shader, box);
+            if (!searching)
+                foreach (var box in bottomBoxes)
+                    DrawLinkBox(shader, box);
 
             DrawFooter(editor);
         }
@@ -228,19 +234,35 @@ namespace DocMe
             return found;
         }
 
-        void DrawSection(MaterialEditor editor, Shader shader, Section section, SimpleShaderConfig config)
+        void DrawSection(MaterialEditor editor, Shader shader, Section section, SimpleShaderConfig config, string search)
         {
+            bool searching = !string.IsNullOrEmpty(search);
+            if (searching && !SectionHasMatch(section, search))
+                return;
+
             if (!string.IsNullOrEmpty(section.category))
                 DrawCategoryLabel(section.category);
 
             string key = $"{PrefKeyPrefix}.{shader.name}.{section.name}";
-            bool open = DrawFoldoutState(key, section.startClosed, section.name, FindSectionLinks(config, section.name));
+            var links = FindSectionLinks(config, section.name);
+
+            bool open;
+            if (searching)
+            {
+                DrawFoldoutHeader(section.name, true, links);
+                open = true;
+            }
+            else
+            {
+                open = DrawFoldoutState(key, section.startClosed, section.name, links);
+            }
 
             if (open)
             {
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 foreach (var up in section.properties)
-                    DrawProperty(editor, up);
+                    if (!searching || PropMatches(up, search))
+                        DrawProperty(editor, up);
                 EditorGUILayout.EndVertical();
             }
 
@@ -382,6 +404,35 @@ namespace DocMe
                 EditorGUILayout.HelpBox(up.help, MessageType.Info);
 
             editor.ShaderProperty(up.prop, new GUIContent(up.prop.displayName, up.tooltip));
+        }
+
+        static bool PropMatches(UiProperty up, string search)
+            => up.prop.displayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
+            || up.prop.name.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        static bool SectionHasMatch(Section section, string search)
+        {
+            foreach (var up in section.properties)
+                if (PropMatches(up, search))
+                    return true;
+            return false;
+        }
+
+        static string DrawSearchField(string search)
+        {
+            EditorGUILayout.BeginHorizontal();
+            search = EditorGUILayout.TextField("Search", search);
+            using (new EditorGUI.DisabledScope(string.IsNullOrEmpty(search)))
+            {
+                if (GUILayout.Button("Clear", EditorStyles.miniButton, GUILayout.Width(46f)))
+                {
+                    search = "";
+                    GUI.FocusControl(null);
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.Space(2);
+            return search;
         }
 
         static void DrawTextLink(SimpleShaderConfig.Link link)
