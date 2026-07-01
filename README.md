@@ -36,8 +36,8 @@ block and an optional config asset. No per-shader inspector code.
 Attribute arguments accept plain text only (a ShaderLab limitation), so URLs,
 paths, and icons live in the config asset and are edited in its Inspector.
 
-A search box at the top of the inspector filters properties live: type part of
-a property name and only matching properties show, each under its section.
+A search box at the top of the inspector filters live: type part of a property,
+section, or category name and only the matches show, each under its section.
 
 ## Example
 
