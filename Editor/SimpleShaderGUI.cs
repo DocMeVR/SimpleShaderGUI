@@ -11,67 +11,21 @@ namespace DocMe
     //   [Tip(text)]                                      tooltip (plain text)
     //   [Help(text)]                                     info box above the property (plain text)
     //   [Config(AssetName)]                              name a SimpleShaderConfig asset for banner + links
+    //   [ShowIf(_Prop)] / [ShowIf(_Prop, value)]         show only while _Prop is not 0, or equals value
+    //   [SectionToggle]                                  first property of a section as a checkbox in its header
     //
     // Banner, banner buttons, link sections and section header links live in the
     // SimpleShaderConfig asset, edited in its Inspector. The shader only names it once.
+    //
+    // Inside an Inspector the material draws with the UI Toolkit view (ShaderInspectorView), mounted from
+    // OnGUI. The IMGUI code below is the fallback: hosts that are not an Inspector, a Unity version where the
+    // mount is unavailable, and the per user Classic inspector switch.
     public class SimpleShaderGUI : ShaderGUI
     {
-        const string PrefKeyPrefix = "DocMe.fold";
+        /// <summary>Test seam: the classic inspector reports where it drew a section's header checkbox, in its container's coordinates.</summary>
+        internal static Action<string, Rect> HeaderToggleDrawn;
 
-        class UiProperty
-        {
-            public MaterialProperty prop;
-            public string tooltip;
-            public string help;
-        }
-
-        class Section
-        {
-            public string name;
-            public string category;
-            public bool startClosed;
-            public readonly List<UiProperty> properties = new List<UiProperty>();
-        }
-
-        class BuildContext
-        {
-            public readonly List<UiProperty> ungrouped = new List<UiProperty>();
-            public readonly List<Section> sections = new List<Section>();
-            public UiProperty currentProperty;
-            public Section currentGroup;
-            public string configName;
-
-            public void StartGroup(string title, bool closed)
-            {
-                currentGroup = new Section { name = title, startClosed = closed };
-                sections.Add(currentGroup);
-            }
-        }
-
-        // Section openers run first so Category attaches to the section it starts.
-        static readonly HashSet<string> Starters = new HashSet<string> { "Foldable" };
-
-        // Add a per-property attribute = one line here, a field to hold it, a read in the renderer.
-        static readonly Dictionary<string, Action<string[], BuildContext>> Handlers =
-            new Dictionary<string, Action<string[], BuildContext>>
-        {
-            ["Foldable"] = (a, c) => { if (a.Length > 0) c.StartGroup(a[0], a.Length <= 1 || a[1] != "open"); },
-            ["Category"] = (a, c) => { if (c.currentGroup != null && a.Length > 0) c.currentGroup.category = a[0]; },
-            ["Tip"]      = (a, c) => { if (c.currentProperty != null && a.Length > 0) c.currentProperty.tooltip = a[0]; },
-            ["Help"]     = (a, c) => { if (c.currentProperty != null && a.Length > 0) c.currentProperty.help = a[0]; },
-            ["Config"]   = (a, c) => { if (a.Length > 0) c.configName = a[0]; },
-        };
-
-        readonly Dictionary<string, string[]> attributeMap = new Dictionary<string, string[]>();
         string search = "";
-
-        static readonly Dictionary<string, Texture> iconCache = new Dictionary<string, Texture>();
-        static readonly Dictionary<string, string[]> iconAliases = new Dictionary<string, string[]>
-        {
-            ["web"] = new[] { "BuildSettings.Web.Small", "BuildSettings.WebGL.Small", "d_BuildSettings.WebGL.Small" },
-        };
-
-        static readonly Dictionary<string, SimpleShaderConfig> configCache = new Dictionary<string, SimpleShaderConfig>();
 
         static GUIStyle headerStyle;
         static GUIStyle HeaderStyle
@@ -88,6 +42,17 @@ namespace DocMe
                         contentOffset = new Vector2(20f, -2f)
                     };
                 return headerStyle;
+            }
+        }
+
+        static GUIStyle headerSwitchStyle;
+        static GUIStyle HeaderSwitchStyle
+        {
+            get
+            {
+                if (headerSwitchStyle == null)
+                    headerSwitchStyle = new GUIStyle(HeaderStyle) { contentOffset = new Vector2(40f, -2f) };
+                return headerSwitchStyle;
             }
         }
 
@@ -122,126 +87,79 @@ namespace DocMe
 
         public override void OnGUI(MaterialEditor editor, MaterialProperty[] props)
         {
+            if (ShaderInspectorMount.TryMount(editor, props, this))
+            {
+                GUILayout.Space(0f);
+                return;
+            }
+
             Material material = editor.target as Material;
             Shader shader = material.shader;
 
-            BuildAttributeMap(shader);
-            BuildContext ctx = Build(props);
-            SimpleShaderConfig config = LoadConfig(ctx.configName);
+            ShaderLayout layout = ShaderLayout.Build(shader);
+            var byName = new Dictionary<string, MaterialProperty>(props.Length);
+            foreach (var p in props)
+                byName[p.name] = p;
+            SimpleShaderConfig config = ShaderUiServices.LoadConfig(layout.ConfigName);
 
             var topBoxes = new List<SimpleShaderConfig.LinkGroup>();
             var bottomBoxes = new List<SimpleShaderConfig.LinkGroup>();
             var afterBoxes = new Dictionary<string, List<SimpleShaderConfig.LinkGroup>>();
-            BucketLinkBoxes(config, ctx.sections, topBoxes, bottomBoxes, afterBoxes);
+            ShaderLayout.BucketLinkBoxes(config, layout.Sections, topBoxes, bottomBoxes, afterBoxes);
 
             DrawBanner(config);
             search = DrawSearchField(search);
-            bool sectionMode = search.StartsWith("s:", StringComparison.OrdinalIgnoreCase);
-            string query = (sectionMode ? search.Substring(2) : search).Trim();
+            ShaderLayout.ParseSearch(search, out bool sectionMode, out string query);
             bool searching = !string.IsNullOrEmpty(query);
 
             if (!searching)
                 foreach (var box in topBoxes)
-                    DrawLinkBox(shader, box);
+                    DrawLinkBox(layout, box);
 
-            foreach (var up in ctx.ungrouped)
-                if (!searching || (!sectionMode && PropMatches(up, query)))
-                    DrawProperty(editor, up);
+            foreach (var item in layout.Ungrouped)
+                if (Met(item.showIf, byName) && (!searching || (!sectionMode && ShaderLayout.ItemMatches(item, query))))
+                    DrawProperty(editor, byName, item);
 
-            foreach (var s in ctx.sections)
+            foreach (var s in layout.Sections)
             {
-                DrawSection(editor, shader, s, config, query, sectionMode);
+                DrawSection(editor, layout, byName, s, config, query, sectionMode);
                 if (!searching && afterBoxes.TryGetValue(s.name, out var boxes))
                     foreach (var box in boxes)
-                        DrawLinkBox(shader, box);
+                        DrawLinkBox(layout, box);
             }
 
             if (!searching)
                 foreach (var box in bottomBoxes)
-                    DrawLinkBox(shader, box);
+                    DrawLinkBox(layout, box);
 
             DrawFooter(editor);
         }
 
-        void BuildAttributeMap(Shader shader)
+        public override void OnClosed(Material material)
         {
-            attributeMap.Clear();
-            int count = shader.GetPropertyCount();
-            for (int i = 0; i < count; i++)
-                attributeMap[shader.GetPropertyName(i)] = shader.GetPropertyAttributes(i);
+            ShaderInspectorMount.OnClosed(this);
+            base.OnClosed(material);
         }
 
-        BuildContext Build(MaterialProperty[] props)
+        static bool Met(ShaderLayout.Condition condition, Dictionary<string, MaterialProperty> byName)
         {
-            var ctx = new BuildContext();
-            foreach (var p in props)
-            {
-                bool hidden = (p.flags & MaterialProperty.PropFlags.HideInInspector) != 0;
-                ctx.currentProperty = hidden ? null : new UiProperty { prop = p };
-
-                Dispatch(p, ctx);
-
-                if (!hidden)
-                {
-                    if (ctx.currentGroup != null)
-                        ctx.currentGroup.properties.Add(ctx.currentProperty);
-                    else
-                        ctx.ungrouped.Add(ctx.currentProperty);
-                }
-            }
-            return ctx;
+            if (condition == null)
+                return true;
+            byName.TryGetValue(condition.property, out var controller);
+            return ShaderLayout.ConditionMet(condition, controller);
         }
 
-        void Dispatch(MaterialProperty p, BuildContext ctx)
+        void DrawSection(MaterialEditor editor, ShaderLayout layout, Dictionary<string, MaterialProperty> byName,
+            ShaderLayout.Section section, SimpleShaderConfig config, string query, bool sectionMode)
         {
-            if (!attributeMap.TryGetValue(p.name, out var attrs))
+            if (!Met(section.showIf, byName))
                 return;
-
-            RunHandlers(attrs, ctx, onlyStarters: true);
-            RunHandlers(attrs, ctx, onlyStarters: false);
-        }
-
-        static void RunHandlers(string[] attrs, BuildContext ctx, bool onlyStarters)
-        {
-            foreach (var raw in attrs)
-            {
-                ParseAttr(raw, out string name, out string[] args);
-                if (Starters.Contains(name) != onlyStarters)
-                    continue;
-                if (Handlers.TryGetValue(name, out var handler))
-                    handler(args, ctx);
-            }
-        }
-
-        static SimpleShaderConfig LoadConfig(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-                return null;
-            if (configCache.TryGetValue(name, out var cached) && cached != null)
-                return cached;
-
-            SimpleShaderConfig found = null;
-            foreach (var guid in AssetDatabase.FindAssets($"{name} t:SimpleShaderConfig"))
-            {
-                var cfg = AssetDatabase.LoadAssetAtPath<SimpleShaderConfig>(AssetDatabase.GUIDToAssetPath(guid));
-                if (cfg != null && cfg.name == name)
-                {
-                    found = cfg;
-                    break;
-                }
-            }
-
-            if (found != null)
-                configCache[name] = found;
-            return found;
-        }
-
-        void DrawSection(MaterialEditor editor, Shader shader, Section section, SimpleShaderConfig config, string query, bool sectionMode)
-        {
             bool searching = !string.IsNullOrEmpty(query);
             if (searching)
             {
-                bool visible = sectionMode ? SectionMatches(section, query) : SectionHasPropMatch(section, query);
+                bool visible = sectionMode
+                    ? ShaderLayout.SectionMatches(section, query)
+                    : section.items.Exists(item => Met(item.showIf, byName) && ShaderLayout.ItemMatches(item, query));
                 if (!visible)
                     return;
             }
@@ -249,68 +167,73 @@ namespace DocMe
             if (!string.IsNullOrEmpty(section.category))
                 DrawCategoryLabel(section.category);
 
-            string key = $"{PrefKeyPrefix}.{shader.name}.{section.name}";
-            var links = FindSectionLinks(config, section.name);
+            string key = layout.FoldKey(section.name);
+            var links = ShaderLayout.FindSectionLinks(config, section.name);
+            MaterialProperty switchProperty = null;
+            if (section.toggle != null && Met(section.toggle.showIf, byName))
+                byName.TryGetValue(section.toggle.name, out switchProperty);
 
             bool open;
             if (searching)
             {
-                DrawFoldoutHeader(section.name, true, links);
+                DrawFoldoutHeader(section.name, true, links, section, switchProperty);
                 open = true;
             }
             else
             {
-                open = DrawFoldoutState(key, section.startClosed, section.name, links);
+                open = DrawFoldoutState(key, section.startClosed, section.name, links, section, switchProperty);
             }
 
             if (open)
             {
-                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                foreach (var up in section.properties)
-                    if (!searching || sectionMode || PropMatches(up, query))
-                        DrawProperty(editor, up);
-                EditorGUILayout.EndVertical();
+                bool off = switchProperty != null && !switchProperty.hasMixedValue && !ShaderPropertyFields.IsOn(switchProperty);
+                var color = GUI.color;
+                if (off)
+                    GUI.color = new Color(color.r, color.g, color.b, color.a * 0.5f);
+                try
+                {
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    foreach (var item in section.items)
+                        if (item != section.toggle && Met(item.showIf, byName) && (!searching || sectionMode || ShaderLayout.ItemMatches(item, query)))
+                            DrawProperty(editor, byName, item);
+                    EditorGUILayout.EndVertical();
+                }
+                finally
+                {
+                    GUI.color = color;
+                }
             }
 
             EditorGUILayout.Space(2);
         }
 
-        static void BucketLinkBoxes(SimpleShaderConfig config, List<Section> sections,
-            List<SimpleShaderConfig.LinkGroup> top, List<SimpleShaderConfig.LinkGroup> bottom,
-            Dictionary<string, List<SimpleShaderConfig.LinkGroup>> after)
+        /// <summary>The [SectionToggle] checkbox in a classic section header; it writes the property and its keyword like the Toggle row it replaces.</summary>
+        static void DrawHeaderSwitch(Rect rect, ShaderLayout.Section section, MaterialProperty property)
         {
-            if (config == null || config.linkBoxes == null)
-                return;
-
-            var names = new HashSet<string>();
-            foreach (var s in sections)
-                names.Add(s.name);
-
-            foreach (var box in config.linkBoxes)
+            string tip = string.IsNullOrEmpty(section.toggle.tooltip) ? section.toggle.displayName : section.toggle.tooltip;
+            bool wasMixed = EditorGUI.showMixedValue;
+            int indent = EditorGUI.indentLevel;
+            EditorGUI.showMixedValue = property.hasMixedValue;
+            EditorGUI.indentLevel = 0;
+            try
             {
-                if (box == null || box.links == null || box.links.Count == 0)
-                    continue;
-
-                if (!string.IsNullOrEmpty(box.afterSection) && names.Contains(box.afterSection))
-                {
-                    if (!after.TryGetValue(box.afterSection, out var list))
-                    {
-                        list = new List<SimpleShaderConfig.LinkGroup>();
-                        after[box.afterSection] = list;
-                    }
-                    list.Add(box);
-                }
-                else if (box.placement == SimpleShaderConfig.LinkPlacement.Top)
-                    top.Add(box);
-                else
-                    bottom.Add(box);
+                EditorGUI.BeginChangeCheck();
+                bool on = EditorGUI.Toggle(rect, ShaderPropertyFields.IsOn(property));
+                if (EditorGUI.EndChangeCheck())
+                    ShaderPropertyFields.ApplyToggle(property, on, property.type == MaterialProperty.PropType.Int, section.toggleMode, section.toggleKeyword);
             }
+            finally
+            {
+                EditorGUI.showMixedValue = wasMixed;
+                EditorGUI.indentLevel = indent;
+            }
+            GUI.Label(rect, new GUIContent("", tip));
         }
 
-        void DrawLinkBox(Shader shader, SimpleShaderConfig.LinkGroup box)
+        void DrawLinkBox(ShaderLayout layout, SimpleShaderConfig.LinkGroup box)
         {
-            string title = string.IsNullOrEmpty(box.title) ? "Links" : box.title;
-            string key = $"{PrefKeyPrefix}.{shader.name}.linkbox.{title}";
+            string title = ShaderLayout.LinkBoxTitle(box);
+            string key = layout.LinkBoxKey(title);
             bool open = DrawFoldoutState(key, box.startCollapsed, title, null);
 
             if (open)
@@ -382,7 +305,7 @@ namespace DocMe
             var widths = new float[count];
             for (int i = 0; i < count; i++)
             {
-                icons[i] = IconOf(links[i]);
+                icons[i] = ShaderUiServices.IconOf(links[i]);
                 string label = string.IsNullOrEmpty(links[i].label) && icons[i] == null ? links[i].url : links[i].label;
                 texts[i] = new GUIContent(label ?? "", string.IsNullOrEmpty(links[i].url) ? label : links[i].url);
                 float textWidth = string.IsNullOrEmpty(texts[i].text) ? 0f : linkStyle.CalcSize(texts[i]).x;
@@ -439,7 +362,7 @@ namespace DocMe
                     EditorGUIUtility.AddCursorRect(itemRect, MouseCursor.Link);
                     if (Event.current.type == EventType.MouseDown && itemRect.Contains(Event.current.mousePosition))
                     {
-                        OpenUrl(links[i].url);
+                        ShaderUiServices.OpenUrl(links[i].url);
                         Event.current.Use();
                     }
                     x += widths[i];
@@ -447,29 +370,15 @@ namespace DocMe
             }
         }
 
-        static void DrawProperty(MaterialEditor editor, UiProperty up)
+        static void DrawProperty(MaterialEditor editor, Dictionary<string, MaterialProperty> byName, ShaderLayout.Item item)
         {
-            if (!string.IsNullOrEmpty(up.help))
-                EditorGUILayout.HelpBox(up.help, MessageType.Info);
+            if (!byName.TryGetValue(item.name, out var prop))
+                return;
 
-            editor.ShaderProperty(up.prop, new GUIContent(up.prop.displayName, up.tooltip));
-        }
+            if (!string.IsNullOrEmpty(item.help))
+                EditorGUILayout.HelpBox(item.help, MessageType.Info);
 
-        static bool TextMatches(string text, string search)
-            => !string.IsNullOrEmpty(text) && text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
-
-        static bool PropMatches(UiProperty up, string search)
-            => TextMatches(up.prop.displayName, search) || TextMatches(up.prop.name, search);
-
-        static bool SectionMatches(Section section, string search)
-            => TextMatches(section.name, search) || TextMatches(section.category, search);
-
-        static bool SectionHasPropMatch(Section section, string search)
-        {
-            foreach (var up in section.properties)
-                if (PropMatches(up, search))
-                    return true;
-            return false;
+            editor.ShaderProperty(prop, new GUIContent(prop.displayName, item.tooltip));
         }
 
         static string DrawSearchField(string search)
@@ -498,7 +407,7 @@ namespace DocMe
 
         static void DrawTextLink(SimpleShaderConfig.Link link)
         {
-            Texture icon = IconOf(link);
+            Texture icon = ShaderUiServices.IconOf(link);
             string label = string.IsNullOrEmpty(link.label) ? link.url : link.label;
             string tip = string.IsNullOrEmpty(link.url) ? label : link.url;
 
@@ -522,12 +431,21 @@ namespace DocMe
             EditorGUILayout.LabelField(text, CategoryStyle);
         }
 
-        static bool DrawFoldoutHeader(string title, bool open, List<SimpleShaderConfig.SectionLink> links)
+        static bool DrawFoldoutHeader(string title, bool open, List<SimpleShaderConfig.SectionLink> links,
+            ShaderLayout.Section section = null, MaterialProperty switchProperty = null)
         {
+            bool hasSwitch = section?.toggle != null && switchProperty != null;
             Rect rect = GUILayoutUtility.GetRect(16f, 22f, HeaderStyle);
-            GUI.Box(rect, title, HeaderStyle);
+            GUI.Box(rect, title, hasSwitch ? HeaderSwitchStyle : HeaderStyle);
 
             Event e = Event.current;
+            Rect switchRect = new Rect(rect.x + 20f, rect.y + (rect.height - 16f) * 0.5f, 16f, 16f);
+            if (hasSwitch)
+            {
+                DrawHeaderSwitch(switchRect, section, switchProperty);
+                if (e.type == EventType.Repaint)
+                    HeaderToggleDrawn?.Invoke(section.name, switchRect);
+            }
             const float iconSize = 14f;
             const float gap = 6f;
             const float rightPad = 6f;
@@ -542,7 +460,7 @@ namespace DocMe
                     if (link == null || string.IsNullOrEmpty(link.url))
                         continue;
 
-                    Texture icon = link.icon != null ? link.icon : ResolveBuiltin(string.IsNullOrEmpty(link.builtinIcon) ? "web" : link.builtinIcon);
+                    Texture icon = ShaderUiServices.IconOf(link);
                     Rect iconRect = new Rect(x, iconY, iconSize, iconSize);
                     Rect hitRect = new Rect(x - gap * 0.5f, rect.y, iconSize + gap, rect.height);
 
@@ -560,10 +478,11 @@ namespace DocMe
             if (e.type == EventType.Repaint)
                 EditorStyles.foldout.Draw(arrow, false, false, open, false);
 
-            if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
+            // A press on the checkbox is the checkbox's, also while a read only material leaves it disabled.
+            if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition) && !(hasSwitch && switchRect.Contains(e.mousePosition)))
             {
                 if (clickedUrl != null)
-                    OpenUrl(clickedUrl);
+                    ShaderUiServices.OpenUrl(clickedUrl);
                 else
                     open = !open;
                 e.Use();
@@ -572,12 +491,13 @@ namespace DocMe
             return open;
         }
 
-        static bool DrawFoldoutState(string key, bool startClosed, string title, List<SimpleShaderConfig.SectionLink> links)
+        static bool DrawFoldoutState(string key, bool startClosed, string title, List<SimpleShaderConfig.SectionLink> links,
+            ShaderLayout.Section section = null, MaterialProperty switchProperty = null)
         {
-            bool wasOpen = EditorPrefs.GetBool(key, !startClosed);
-            bool open = DrawFoldoutHeader(title, wasOpen, links);
+            bool wasOpen = ShaderUiServices.Prefs.GetBool(key, !startClosed);
+            bool open = DrawFoldoutHeader(title, wasOpen, links, section, switchProperty);
             if (open != wasOpen)
-                EditorPrefs.SetBool(key, open);
+                ShaderUiServices.Prefs.SetBool(key, open);
             return open;
         }
 
@@ -587,31 +507,18 @@ namespace DocMe
             editor.RenderQueueField();
             editor.EnableInstancingField();
             editor.DoubleSidedGIField();
-        }
 
-        static List<SimpleShaderConfig.SectionLink> FindSectionLinks(SimpleShaderConfig config, string sectionName)
-        {
-            if (config == null || config.sectionLinks == null)
-                return null;
-
-            List<SimpleShaderConfig.SectionLink> result = null;
-            foreach (var sl in config.sectionLinks)
+            if (ShaderUiServices.Classic)
             {
-                if (sl == null || sl.section != sectionName)
-                    continue;
-                result ??= new List<SimpleShaderConfig.SectionLink>();
-                result.Add(sl);
+                EditorGUI.BeginChangeCheck();
+                bool classic = EditorGUILayout.Toggle(new GUIContent("Classic inspector",
+                    "Draws every DocMe shader material with this older inspector. Turn it off to use the newer one."), true);
+                if (EditorGUI.EndChangeCheck() && !classic)
+                {
+                    ShaderUiServices.Classic = false;
+                    editor.Repaint();
+                }
             }
-            return result;
-        }
-
-        static void OpenUrl(string url)
-        {
-            if (string.IsNullOrEmpty(url))
-                return;
-            if (!url.Contains("://"))
-                url = "https://" + url;
-            Application.OpenURL(url);
         }
 
         static void HandleLinkClick(Rect rect, string url)
@@ -622,57 +529,9 @@ namespace DocMe
             Event e = Event.current;
             if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
             {
-                OpenUrl(url);
+                ShaderUiServices.OpenUrl(url);
                 e.Use();
             }
-        }
-
-        static Texture IconOf(SimpleShaderConfig.Link link)
-            => link.icon != null ? link.icon : ResolveBuiltin(link.builtinIcon);
-
-        static Texture ResolveBuiltin(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-                return null;
-            if (iconCache.TryGetValue(name, out var cached))
-                return cached;
-
-            Texture tex = null;
-            if (iconAliases.TryGetValue(name, out var candidates))
-            {
-                foreach (var candidate in candidates)
-                {
-                    tex = EditorGUIUtility.IconContent(candidate)?.image;
-                    if (tex != null)
-                        break;
-                }
-            }
-            else
-            {
-                tex = EditorGUIUtility.IconContent(name)?.image;
-            }
-
-            iconCache[name] = tex;
-            return tex;
-        }
-
-        // "Foldable(Eye Look, closed)" -> name = "Foldable", args = ["Eye Look", "closed"]
-        static void ParseAttr(string raw, out string name, out string[] args)
-        {
-            int open = raw.IndexOf('(');
-            int close = raw.LastIndexOf(')');
-            if (open < 0 || close < open)
-            {
-                name = raw.Trim();
-                args = Array.Empty<string>();
-                return;
-            }
-
-            name = raw[..open].Trim();
-            string inside = raw[(open + 1)..close];
-            args = inside.Split(',');
-            for (int i = 0; i < args.Length; i++)
-                args[i] = args[i].Trim();
         }
     }
 }
