@@ -19,4 +19,8 @@ MonoBehaviour:
   bannerIconSize: {x: 16, y: 16}
   bannerLinks: []
   linkBoxes: []
-  sectionLinks: []
+  sectionLinks:
+  - section: Advanced
+    url: github.com/DocMeVR/SimpleShaderGUI
+    icon: {fileID: 0}
+    builtinIcon: info

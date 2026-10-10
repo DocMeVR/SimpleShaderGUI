@@ -9,6 +9,9 @@ Shader "DocMe/Example/Showcase"
         [Foldable(Colors, open)]
         [Tip(The main surface tint)]
         _Color ("Base Color", Color) = (1, 0.6, 0.2, 1)
+        [Tip(Shows the emission colour below)] [ToggleUI]
+        _UseEmission ("Use Emission", Float) = 0
+        [ShowIf(_UseEmission)]
         _Emission ("Emission", Color) = (0, 0, 0, 1)
 
         [Category(Surface)]
@@ -18,7 +21,12 @@ Shader "DocMe/Example/Showcase"
         _Metallic ("Metallic", Range(0,1)) = 0.0
 
         [Foldable(Advanced)]
+        [SectionToggle] [Tip(Cuts away the see through parts of the surface)] [ToggleUI]
+        _UseCutoff ("Alpha Cutout", Float) = 0
         _Cutoff ("Alpha Cutoff", Range(0,1)) = 0.5
+        [Enum(Hard,0,Soft,1)] _CutoffEdge ("Cutout Edge", Float) = 0
+        [ShowIf(_CutoffEdge, 1)]
+        _CutoffSoftness ("Edge Softness", Range(0,1)) = 0.1
     }
     SubShader
     {
