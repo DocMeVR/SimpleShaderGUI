@@ -9,6 +9,8 @@
     "email": "docme2nd@gmail.com"
   },
   "license": "MIT",
+  "documentationUrl": "https://github.com/DocMeVR/SimpleShaderGUI#readme",
+  "changelogUrl": "https://github.com/DocMeVR/SimpleShaderGUI/blob/main/CHANGELOG.md",
   "keywords": [
     "vrchat",
     "shader",
