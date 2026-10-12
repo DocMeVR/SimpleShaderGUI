@@ -80,6 +80,14 @@ own Material editor and under Poiyomi's alike, and every shader that names
   the property, which keeps its new field. A property with a custom property
   drawer is drawn whole by Unity's classic code inside the new inspector. Either
   way the drawer works exactly as before, including anything it does while it draws.
+- **Fallback picture for VRChat.** `[BakeFallback]` on a texture property (usually
+  `_MainTex`) adds a **Bake Fallback Picture** button. It renders the material on a
+  flat quad that spans its UV square and saves `<Material>_Fallback.png` next to the
+  material with a transparent background, then puts it into that property: with the
+  shader's `"VRCFallback"="UnlitCutout"` tag, players who block custom shaders see it
+  cut out at the same size as the real shader. While it renders, the global
+  float `_DocMeBaking` is 1: a shader that supports baking freezes its animations then
+  and draws a soft outline. Only shaders that carry the attribute show the button.
 - **Undo and multi select** behave as in Unity's inspector: every change goes
   through the same material properties Unity hands to the inspector. Selecting
   several materials shows differing values as mixed, and a change writes all of them.
