@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.0.0...1.1.0) (2026-10-12)
+
+
+### Features
+
+* bake a fallback picture for VRChat from the material ([eba8d7a](https://github.com/DocMeVR/SimpleShaderGUI/commit/eba8d7acf8785f57639de4dfba5e7d5825de1778))
+
 ## 1.0.0 (2026-10-10)
 
 
