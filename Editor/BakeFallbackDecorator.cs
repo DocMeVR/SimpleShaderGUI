@@ -15,12 +15,28 @@ namespace DocMe
     {
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor) => 24f;
 
+        static GUIContent content;
+        static string contentLanguage;
+        static int contentGeneration = -1;
+
+        /// <summary>The button's text in the chosen language, looked up again only after a language or language file change.</summary>
+        internal static GUIContent Content()
+        {
+            string language = ShaderUiLanguage.Current;
+            if (content != null && contentLanguage == language && contentGeneration == ShaderTexts.Generation)
+                return content;
+            var texts = ShaderTexts.For(null);
+            content = new GUIContent(texts.Ui("ui.bake", "Bake Fallback Picture"),
+                texts.Ui("ui.bake.tooltip", "Makes the picture players see when they block custom shaders, at the same size as the real shader."));
+            contentLanguage = language;
+            contentGeneration = ShaderTexts.Generation;
+            return content;
+        }
+
         public override void OnGUI(Rect position, MaterialProperty prop, string label, MaterialEditor editor)
         {
             var r = new Rect(position.x, position.y + 2f, position.width, 20f);
-            var content = new GUIContent("Bake Fallback Picture",
-                "Makes the picture players see when they block custom shaders, at the same size as the real shader.");
-            if (!GUI.Button(r, content)) return;
+            if (!GUI.Button(r, Content())) return;
             foreach (Object target in editor.targets)
                 if (target is Material material)
                     FallbackBaker.Bake(material, prop.name);
@@ -54,7 +70,7 @@ namespace DocMe
             var picture = AssetDatabase.LoadAssetAtPath<Texture2D>(pngPath);
             if (material.HasProperty(fallbackProperty))
             {
-                Undo.RecordObject(material, "Bake Fallback Picture");
+                Undo.RecordObject(material, BakeFallbackDecorator.Content().text);
                 material.SetTexture(fallbackProperty, picture);
                 EditorUtility.SetDirty(material);
                 AssetDatabase.SaveAssetIfDirty(material);

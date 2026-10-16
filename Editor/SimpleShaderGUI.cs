@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
@@ -26,6 +27,83 @@ namespace DocMe
         internal static Action<string, Rect> HeaderToggleDrawn;
 
         string search = "";
+        ShaderLayout cachedLayout;
+        Shader cachedShader;
+        string cachedLanguage;
+        int cachedGeneration = -1;
+        int cachedStamp = -1;
+        ShaderTexts texts;
+        readonly Dictionary<string, string> linkTexts = new Dictionary<string, string>();
+        GUIContent languageLabel, reviewNote, classicToggle;
+        GUIContent[] languageNames;
+        string searchTip, linksTitle;
+
+        internal ShaderLayout CachedLayout => cachedLayout;
+
+        /// <summary>The layout in the chosen language, built again only when the shader, a shader file, the language or a language file changed.</summary>
+        ShaderLayout LayoutFor(Shader shader)
+        {
+            string language = ShaderUiLanguage.Current;
+            if (cachedLayout != null && cachedShader == shader && cachedLanguage == language
+                && cachedGeneration == ShaderTexts.Generation && cachedStamp == ShaderImportWatcher.Stamp)
+                return cachedLayout;
+            cachedShader = shader;
+            cachedLanguage = language;
+            cachedGeneration = ShaderTexts.Generation;
+            cachedStamp = ShaderImportWatcher.Stamp;
+            cachedLayout = ShaderLayout.Build(shader);
+            texts = ShaderTexts.For(cachedLayout.ConfigName);
+            cachedLayout.Localize(texts);
+            CacheTexts(ShaderUiServices.LoadConfig(cachedLayout.ConfigName));
+            return cachedLayout;
+        }
+
+        void CacheTexts(SimpleShaderConfig config)
+        {
+            linkTexts.Clear();
+            if (config != null)
+            {
+                foreach (var link in config.bannerLinks ?? new List<SimpleShaderConfig.Link>())
+                    AddLinkText(link?.label);
+                foreach (var box in config.linkBoxes ?? new List<SimpleShaderConfig.LinkGroup>())
+                {
+                    if (box == null)
+                        continue;
+                    AddLinkText(box.title);
+                    foreach (var link in box.links ?? new List<SimpleShaderConfig.Link>())
+                        AddLinkText(link?.label);
+                }
+            }
+            linksTitle = texts.Ui("ui.links", "Links");
+            languageNames = texts.Languages.Select(c => new GUIContent(ShaderUiLanguage.NativeName(c))).ToArray();
+            languageLabel = new GUIContent("Language", texts.Ui("ui.language.tooltip", "The language of this inspector. Modular Avatar and other tools that use NDMF share this choice."));
+            reviewNote = texts.Reviewed ? null : new GUIContent(texts.Ui("ui.language.review", "This translation has not been checked by a native speaker yet."));
+            searchTip = texts.Ui("ui.classic.search", "Search properties. Prefix with s: to search sections.");
+            classicToggle = new GUIContent(texts.Ui("ui.classic", "Classic inspector"),
+                texts.Ui("ui.classic.back", "Draws every DocMe shader material with this older inspector. Turn it off to use the newer one."));
+        }
+
+        void AddLinkText(string label)
+        {
+            if (!string.IsNullOrEmpty(label) && !linkTexts.ContainsKey(label))
+                linkTexts[label] = texts.Text("link." + label, label);
+        }
+
+        string LinkText(string label) => !string.IsNullOrEmpty(label) && linkTexts.TryGetValue(label, out var text) ? text : label;
+
+        void DrawLanguage()
+        {
+            var codes = texts.Languages;
+            if (codes.Count < 2)
+                return;
+            int current = ShaderInspectorView.IndexOfCode(codes, texts.Language);
+            EditorGUI.BeginChangeCheck();
+            int picked = EditorGUILayout.Popup(languageLabel, current, languageNames);
+            if (EditorGUI.EndChangeCheck() && picked >= 0 && picked < codes.Count && picked != current)
+                ShaderUiLanguage.Set(codes[picked]);
+            if (reviewNote != null)
+                EditorGUILayout.LabelField(reviewNote, EditorStyles.wordWrappedMiniLabel);
+        }
 
         static GUIStyle headerStyle;
         static GUIStyle HeaderStyle
@@ -96,7 +174,7 @@ namespace DocMe
             Material material = editor.target as Material;
             Shader shader = material.shader;
 
-            ShaderLayout layout = ShaderLayout.Build(shader);
+            ShaderLayout layout = LayoutFor(shader);
             var byName = new Dictionary<string, MaterialProperty>(props.Length);
             foreach (var p in props)
                 byName[p.name] = p;
@@ -108,7 +186,8 @@ namespace DocMe
             ShaderLayout.BucketLinkBoxes(config, layout.Sections, topBoxes, bottomBoxes, afterBoxes);
 
             DrawBanner(config);
-            search = DrawSearchField(search);
+            DrawLanguage();
+            search = DrawSearchField(search, searchTip);
             ShaderLayout.ParseSearch(search, out bool sectionMode, out string query);
             bool searching = !string.IsNullOrEmpty(query);
 
@@ -132,7 +211,7 @@ namespace DocMe
                 foreach (var box in bottomBoxes)
                     DrawLinkBox(layout, box);
 
-            DrawFooter(editor);
+            DrawFooter(editor, classicToggle);
         }
 
         public override void OnClosed(Material material)
@@ -165,7 +244,7 @@ namespace DocMe
             }
 
             if (!string.IsNullOrEmpty(section.category))
-                DrawCategoryLabel(section.category);
+                DrawCategoryLabel(section.categoryTitle);
 
             string key = layout.FoldKey(section.name);
             var links = ShaderLayout.FindSectionLinks(config, section.name);
@@ -176,12 +255,12 @@ namespace DocMe
             bool open;
             if (searching)
             {
-                DrawFoldoutHeader(section.name, true, links, section, switchProperty);
+                DrawFoldoutHeader(section.title, true, links, section, switchProperty);
                 open = true;
             }
             else
             {
-                open = DrawFoldoutState(key, section.startClosed, section.name, links, section, switchProperty);
+                open = DrawFoldoutState(key, section.startClosed, section.title, links, section, switchProperty);
             }
 
             if (open)
@@ -234,7 +313,7 @@ namespace DocMe
         {
             string title = ShaderLayout.LinkBoxTitle(box);
             string key = layout.LinkBoxKey(title);
-            bool open = DrawFoldoutState(key, box.startCollapsed, title, null);
+            bool open = DrawFoldoutState(key, box.startCollapsed, string.IsNullOrEmpty(box.title) ? linksTitle : LinkText(box.title), null);
 
             if (open)
             {
@@ -247,7 +326,7 @@ namespace DocMe
             EditorGUILayout.Space(2);
         }
 
-        static void DrawBanner(SimpleShaderConfig config)
+        void DrawBanner(SimpleShaderConfig config)
         {
             if (config == null)
                 return;
@@ -286,7 +365,7 @@ namespace DocMe
             EditorGUILayout.Space(4);
         }
 
-        static void DrawBannerLinks(List<SimpleShaderConfig.Link> links, Vector2 iconSize)
+        void DrawBannerLinks(List<SimpleShaderConfig.Link> links, Vector2 iconSize)
         {
             if (iconSize.x < 1f || iconSize.y < 1f)
                 iconSize = new Vector2(16f, 16f);
@@ -306,7 +385,7 @@ namespace DocMe
             for (int i = 0; i < count; i++)
             {
                 icons[i] = ShaderUiServices.IconOf(links[i]);
-                string label = string.IsNullOrEmpty(links[i].label) && icons[i] == null ? links[i].url : links[i].label;
+                string label = string.IsNullOrEmpty(links[i].label) && icons[i] == null ? links[i].url : LinkText(links[i].label);
                 texts[i] = new GUIContent(label ?? "", string.IsNullOrEmpty(links[i].url) ? label : links[i].url);
                 float textWidth = string.IsNullOrEmpty(texts[i].text) ? 0f : linkStyle.CalcSize(texts[i]).x;
                 float iconWidth = icons[i] != null ? iconSize.x + (textWidth > 0f ? iconGap : 0f) : 0f;
@@ -378,16 +457,16 @@ namespace DocMe
             if (!string.IsNullOrEmpty(item.help))
                 EditorGUILayout.HelpBox(item.help, MessageType.Info);
 
-            editor.ShaderProperty(prop, new GUIContent(prop.displayName, item.tooltip));
+            editor.ShaderProperty(prop, new GUIContent(item.displayName, item.tooltip));
         }
 
-        static string DrawSearchField(string search)
+        static string DrawSearchField(string search, string tip)
         {
             EditorGUILayout.BeginHorizontal();
 
             GUIContent icon = EditorGUIUtility.IconContent("Search Icon");
             if (icon != null && icon.image != null)
-                GUILayout.Label(new GUIContent(icon.image, "Search properties. Prefix with s: to search sections."), GUILayout.Width(18f), GUILayout.Height(18f));
+                GUILayout.Label(new GUIContent(icon.image, tip), GUILayout.Width(18f), GUILayout.Height(18f));
 
             search = EditorGUILayout.TextField(search);
 
@@ -405,10 +484,10 @@ namespace DocMe
             return search;
         }
 
-        static void DrawTextLink(SimpleShaderConfig.Link link)
+        void DrawTextLink(SimpleShaderConfig.Link link)
         {
             Texture icon = ShaderUiServices.IconOf(link);
-            string label = string.IsNullOrEmpty(link.label) ? link.url : link.label;
+            string label = string.IsNullOrEmpty(link.label) ? link.url : LinkText(link.label);
             string tip = string.IsNullOrEmpty(link.url) ? label : link.url;
 
             Rect row = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight);
@@ -436,7 +515,7 @@ namespace DocMe
         {
             bool hasSwitch = section?.toggle != null && switchProperty != null;
             Rect rect = GUILayoutUtility.GetRect(16f, 22f, HeaderStyle);
-            GUI.Box(rect, title, hasSwitch ? HeaderSwitchStyle : HeaderStyle);
+            GUI.Box(rect, new GUIContent(title, section?.help), hasSwitch ? HeaderSwitchStyle : HeaderStyle);
 
             Event e = Event.current;
             Rect switchRect = new Rect(rect.x + 20f, rect.y + (rect.height - 16f) * 0.5f, 16f, 16f);
@@ -501,7 +580,7 @@ namespace DocMe
             return open;
         }
 
-        static void DrawFooter(MaterialEditor editor)
+        static void DrawFooter(MaterialEditor editor, GUIContent classicToggle)
         {
             EditorGUILayout.Space();
             editor.RenderQueueField();
@@ -511,8 +590,7 @@ namespace DocMe
             if (ShaderUiServices.Classic)
             {
                 EditorGUI.BeginChangeCheck();
-                bool classic = EditorGUILayout.Toggle(new GUIContent("Classic inspector",
-                    "Draws every DocMe shader material with this older inspector. Turn it off to use the newer one."), true);
+                bool classic = EditorGUILayout.Toggle(classicToggle, true);
                 if (EditorGUI.EndChangeCheck() && !classic)
                 {
                     ShaderUiServices.Classic = false;
