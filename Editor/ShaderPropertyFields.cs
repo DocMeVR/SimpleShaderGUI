@@ -113,7 +113,8 @@ namespace DocMe
         static readonly HashSet<string> ToggleOn = new HashSet<string> { "Toggle", "MaterialToggle" };
         static readonly HashSet<string> ToggleOff = new HashSet<string> { "ToggleOff", "MaterialToggleOff" };
         static readonly HashSet<string> ToggleUi = new HashSet<string> { "ToggleUI", "MaterialToggleUI" };
-        static readonly HashSet<string> EnumNames = new HashSet<string> { "Enum", "MaterialEnum" };
+        // [Dropdown] reads like [Enum] but takes any number of entries, and Unity has no drawer by that name, so it stays quiet.
+        static readonly HashSet<string> EnumNames = new HashSet<string> { "Enum", "MaterialEnum", "Dropdown" };
         static readonly HashSet<string> KeywordEnumNames = new HashSet<string> { "KeywordEnum", "MaterialKeywordEnum" };
         static readonly HashSet<string> IntRangeNames = new HashSet<string> { "IntRange", "MaterialIntRange" };
         static readonly HashSet<string> PowerSliderNames = new HashSet<string> { "PowerSlider", "MaterialPowerSlider" };

@@ -62,11 +62,12 @@ search section names instead.
 Unity's own attributes work as usual: `[Toggle]`, `[ToggleOff]`, `[ToggleUI]`,
 `[Enum]`, `[KeywordEnum]`, `[IntRange]`, `[PowerSlider]`, `[Space]`, `[Header]`,
 `[HDR]`, `[NoScaleOffset]`, `[Normal]`, `[PerRendererData]` and `[HideInInspector]`.
-An `[Enum]` may list more than seven entries: the inspector shows them all as a
-dropdown, while the older inspector shows a number box there, since Unity's own
-Enum drawer stops at seven. For such an Enum, Unity also prints the warning
-"Failed to create material drawer Enum" in the Console whenever it builds its
-own drawer for it; that message is Unity's and does no harm here.
+Unity's own Enum drawer stops at seven entries, and for a longer `[Enum]` it
+prints "Failed to create material drawer Enum" in the Console. For a longer list
+write `[Dropdown(...)]` instead, with the same name and value pairs:
+`[Dropdown(Round,0,Slit,1,Star,2,...)] _Shape ("Shape", Float) = 0`. The inspector
+shows it as a dropdown with every entry; Unity knows no drawer by that name, so it
+prints nothing (the older inspector shows a number box there).
 
 ## How the inspector draws
 
