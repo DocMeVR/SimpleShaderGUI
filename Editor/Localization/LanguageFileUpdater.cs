@@ -234,7 +234,9 @@ namespace DocMe
             var paths = ShaderTexts.FindPaths(baseName);
             string englishPath = paths.FirstOrDefault(p => ShaderUiLanguage.Normalize(ShaderTexts.CodeOf(p, baseName)) == ShaderUiLanguage.English)
                 ?? Path.GetDirectoryName(AssetDatabase.GetAssetPath(shader)).Replace('\\', '/') + "/" + baseName + "." + EnglishCode + ShaderTexts.Extension;
-            var english = Load(englishPath);
+            var english = LoadOrWarn(englishPath);
+            if (english == null)
+                return written;
             UpdateEnglish(english, shader);
             Save(englishPath, english, written);
             var wanted = Keys(shader, english);
@@ -243,7 +245,9 @@ namespace DocMe
                 string code = ShaderTexts.CodeOf(path, baseName);
                 if (path == englishPath || ShaderUiLanguage.Normalize(code) == ShaderUiLanguage.English)
                     continue;
-                var file = Load(path);
+                var file = LoadOrWarn(path);
+                if (file == null)
+                    continue;
                 PrepareHeader(file, code);
                 UpdateTranslation(file, wanted, MemoryOf(LanguageFilesOf(code)));
                 Save(path, file, written);
@@ -261,7 +265,9 @@ namespace DocMe
                 string code = ShaderTexts.CodeOf(path, ShaderTexts.UiBaseName);
                 if (ShaderUiLanguage.Normalize(code) == ShaderUiLanguage.English)
                     continue;
-                var file = Load(path);
+                var file = LoadOrWarn(path);
+                if (file == null)
+                    continue;
                 PrepareHeader(file, code);
                 UpdateTranslation(file, wanted, null);
                 Save(path, file, written);
@@ -290,14 +296,53 @@ namespace DocMe
                 string name = Path.GetFileNameWithoutExtension(path);
                 int dot = name.LastIndexOf('.');
                 if (dot >= 0 && string.Equals(name.Substring(dot + 1), code, StringComparison.OrdinalIgnoreCase))
-                    yield return Load(path);
+                {
+                    var file = LoadForUpdate(path, out _);
+                    if (file != null)
+                        yield return file;
+                }
             }
         }
 
-        static PoFile Load(string path)
+        /// <summary>The file at a project path ready to be updated: a new empty file when there is none; null, with the reason, when it is not clean UTF-8 or has a line the reader cannot read, because writing it back would lose the translator's work.</summary>
+        internal static PoFile LoadForUpdate(string path, out string reason)
         {
+            reason = null;
             string full = Path.GetFullPath(path);
-            return File.Exists(full) ? PoFile.Parse(File.ReadAllText(full)) : new PoFile();
+            if (!File.Exists(full))
+                return new PoFile();
+            string text;
+            try
+            {
+                text = PoFile.Decode(File.ReadAllBytes(full), out reason);
+            }
+            catch (IOException e)
+            {
+                reason = "the file could not be read (" + e.Message + ").";
+                return null;
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                reason = "the file could not be read (" + e.Message + ").";
+                return null;
+            }
+            if (text == null)
+                return null;
+            var file = PoFile.Parse(text);
+            if (file.Problems.Count > 0)
+            {
+                reason = file.Problems[0];
+                return null;
+            }
+            return file;
+        }
+
+        static PoFile LoadOrWarn(string path)
+        {
+            var file = LoadForUpdate(path, out string reason);
+            if (file == null)
+                Debug.LogWarning("[DocMe Shader UI] " + path + " was left as it is: " + reason);
+            return file;
         }
 
         static void Save(string path, PoFile file, List<string> written)

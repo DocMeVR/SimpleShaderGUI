@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEngine;
 
 namespace DocMe
 {
@@ -176,7 +177,11 @@ namespace DocMe
             {
                 try
                 {
-                    found.Add((CodeOf(path, baseName), File.ReadAllText(Path.GetFullPath(path))));
+                    string text = PoFile.Decode(File.ReadAllBytes(Path.GetFullPath(path)), out _);
+                    if (text == null)
+                        Debug.LogWarning("[DocMe Shader UI] " + path + " is not saved as UTF-8, so it is not used.");
+                    else
+                        found.Add((CodeOf(path, baseName), text));
                 }
                 catch (IOException)
                 {

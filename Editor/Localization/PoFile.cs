@@ -7,7 +7,8 @@ namespace DocMe
     /// <summary>
     /// A gettext .po language file as the Shader UI uses it. msgid is a stable key, msgstr the text in the file's
     /// language, "#. en:" the English a translation was made from, "#. was:" the English before it changed,
-    /// "#, fuzzy" an outdated translation and "#~" an entry that no setting uses any more.
+    /// "#, fuzzy" an outdated translation and "#~" an entry that no setting uses any more. AvatarDoc (DocMeVR/AvatarDoc)
+    /// carries a copy of this reader in Editor/Localization/PoFile.cs; keep fixes in step.
     /// </summary>
     public sealed class PoFile
     {
@@ -26,6 +27,9 @@ namespace DocMe
 
         public const string LanguageField = "Language";
         public const string ReviewedField = "X-DocMe-Reviewed";
+
+        /// <summary>The comment lines above the header, such as the ones Poedit writes; kept as written.</summary>
+        public readonly List<string> HeaderComments = new List<string>();
 
         public readonly List<(string name, string value)> Header = new List<(string, string)>();
         public readonly List<Entry> Entries = new List<Entry>();
@@ -80,6 +84,32 @@ namespace DocMe
                 Add(entry);
         }
 
+        /// <summary>The text of a file's bytes in UTF-8, without its byte order mark; null, with the reason, when the bytes are UTF-16 or not valid UTF-8.</summary>
+        public static string Decode(byte[] bytes, out string error)
+        {
+            error = null;
+            if (bytes == null)
+            {
+                error = "the file could not be opened.";
+                return null;
+            }
+            if (bytes.Length >= 2 && ((bytes[0] == 0xFF && bytes[1] == 0xFE) || (bytes[0] == 0xFE && bytes[1] == 0xFF)))
+            {
+                error = "the file is saved as UTF-16. Save it again as UTF-8.";
+                return null;
+            }
+            int start = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
+            try
+            {
+                return new UTF8Encoding(false, true).GetString(bytes, start, bytes.Length - start);
+            }
+            catch (DecoderFallbackException)
+            {
+                error = "the file is not saved as UTF-8. Save it again as UTF-8.";
+                return null;
+            }
+        }
+
         public static PoFile Parse(string text)
         {
             var file = new PoFile();
@@ -104,7 +134,12 @@ namespace DocMe
                     if (entry.key.Length == 0)
                     {
                         if (!entry.obsolete)
+                        {
                             file.ReadHeader(entry.text);
+                            file.HeaderComments.AddRange(entry.comments);
+                            if (entry.fuzzy)
+                                file.HeaderComments.Add("#, fuzzy");
+                        }
                     }
                     else if (!entry.obsolete && file.byKey.ContainsKey(entry.key))
                         file.Problems.Add("line " + start + ": the key \"" + entry.key + "\" is there twice");
@@ -201,8 +236,32 @@ namespace DocMe
                 file.Problems.Add("line " + line + ": a text must stand in double quotes");
                 return "";
             }
-            return Unescape(part.Substring(1, part.Length - 2));
+            var inner = part.Substring(1, part.Length - 2);
+            for (int i = 0; i < inner.Length; i++)
+            {
+                if (inner[i] == '"')
+                {
+                    file.Problems.Add("line " + line + ": a double quote inside a text must be written \\\", and each line holds one text.");
+                    return "";
+                }
+                if (inner[i] != '\\')
+                    continue;
+                if (i + 1 >= inner.Length)
+                {
+                    file.Problems.Add("line " + line + ": the text ends in a lone backslash. Write \\\\ for a backslash.");
+                    return "";
+                }
+                if (Escapes.IndexOf(inner[++i]) < 0)
+                {
+                    file.Problems.Add("line " + line + ": \\" + inner[i] + " is not an escape the Shader UI reads. Write \\\\ for a backslash, \\\" for a double quote, \\n for a line break or \\t for a tab.");
+                    return "";
+                }
+            }
+            return Unescape(inner);
         }
+
+        /// <summary>The characters that may follow a backslash in a text: the escapes Escape writes.</summary>
+        const string Escapes = "\\\"ntr";
 
         void ReadHeader(string text)
         {
@@ -217,6 +276,8 @@ namespace DocMe
         public string Write()
         {
             var sb = new StringBuilder();
+            foreach (var comment in HeaderComments)
+                sb.Append(comment).Append('\n');
             sb.Append("msgid \"\"\nmsgstr \"\"\n");
             foreach (var (name, value) in Header)
                 sb.Append('"').Append(Escape(name + ": " + value + "\n")).Append("\"\n");
