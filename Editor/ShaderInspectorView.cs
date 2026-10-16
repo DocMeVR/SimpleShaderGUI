@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.TextCore.Text;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
@@ -648,21 +649,38 @@ namespace DocMe
         /// <summary>A link label or link box title from the config, in the inspector's language.</summary>
         string LinkText(string text) => string.IsNullOrEmpty(text) ? text : texts.Text("link." + text, text);
 
-        static Font japaneseFont;
+        static FontAsset japaneseFont;
+        static readonly string[] JapaneseFamilies = { "Yu Gothic UI", "Meiryo UI", "Noto Sans CJK JP", "Hiragino Sans" };
 
-        /// <summary>Japanese in a Japanese font: outside Japan, Windows otherwise draws the same characters with Chinese glyph shapes.</summary>
+        /// <summary>Japanese in a Japanese font asset built from the system fonts the way NDMF does: outside Japan, Windows otherwise draws the same characters with Chinese glyph shapes, and a legacy dynamic font measures every label as empty.</summary>
         void ApplyFont()
         {
             if (ShaderUiLanguage.BaseOf(texts.Language) != "ja")
                 return;
             if (japaneseFont == null)
-            {
-                japaneseFont = Font.CreateDynamicFontFromOSFont(new[] { "Yu Gothic UI", "Meiryo UI", "Noto Sans CJK JP", "Hiragino Sans" }, 12);
-                if (japaneseFont != null)
-                    japaneseFont.hideFlags = HideFlags.HideAndDontSave;
-            }
+                japaneseFont = LoadJapaneseFont();
             if (japaneseFont != null)
-                style.unityFontDefinition = FontDefinition.FromFont(japaneseFont);
+                style.unityFontDefinition = new StyleFontDefinition(japaneseFont);
+        }
+
+        static FontAsset LoadJapaneseFont()
+        {
+            FontAsset main = null;
+            foreach (var family in JapaneseFamilies)
+            {
+                var loaded = FontAsset.CreateFontAsset(family, "");
+                if (loaded == null)
+                    continue;
+                loaded.hideFlags = HideFlags.HideAndDontSave;
+                if (main == null)
+                {
+                    main = loaded;
+                    main.fallbackFontAssetTable = new List<FontAsset>();
+                }
+                else
+                    main.fallbackFontAssetTable.Add(loaded);
+            }
+            return main;
         }
 
         /// <summary>The Language switch, labelled in English in every language so anyone can find it; hidden while only English exists.</summary>
