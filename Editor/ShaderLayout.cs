@@ -22,17 +22,36 @@ namespace DocMe
         {
             public int index;
             public string name;
+
+            /// <summary>The label as shown: the shader's display name until Localize puts in the chosen language.</summary>
             public string displayName;
+
+            /// <summary>The shader's own display name, kept for search and as the English of the label.</summary>
+            public string englishName;
             public string tooltip;
             public string help;
+
+            /// <summary>The shown title of a [Header] above the property, or null to show the attribute's text.</summary>
+            public string headerTitle;
+
+            /// <summary>Shown dropdown entries by their English entry name; null until Localize.</summary>
+            public Dictionary<string, string> optionTitles;
             public string[] attributes = Array.Empty<string>();
             public Condition showIf;
+
+            public string OptionTitle(string english)
+                => optionTitles != null && english != null && optionTitles.TryGetValue(english, out var title) ? title : english;
         }
 
         internal sealed class Section
         {
             public string name;
             public string category;
+
+            /// <summary>The shown title, the shown help line (the title's tooltip) and the shown category; name and category stay the identities.</summary>
+            public string title;
+            public string help;
+            public string categoryTitle;
             public bool startClosed;
             public Condition showIf;
 
@@ -76,11 +95,16 @@ namespace DocMe
             ["Foldable"] = (a, c) =>
             {
                 if (a.Length == 0) return;
-                c.group = new Section { name = a[0], startClosed = a.Length <= 1 || a[1] != "open" };
+                c.group = new Section { name = a[0], title = a[0], startClosed = a.Length <= 1 || a[1] != "open" };
                 c.layout.Sections.Add(c.group);
                 c.startsSection = true;
             },
-            ["Category"] = (a, c) => { if (c.group != null && a.Length > 0) c.group.category = a[0]; },
+            ["Category"] = (a, c) =>
+            {
+                if (c.group == null || a.Length == 0) return;
+                c.group.category = a[0];
+                c.group.categoryTitle = a[0];
+            },
             ["Tip"]      = (a, c) => { if (c.current != null && a.Length > 0) c.current.tooltip = a[0]; },
             ["Help"]     = (a, c) => { if (c.current != null && a.Length > 0) c.current.help = a[0]; },
             ["Config"]   = (a, c) => { if (a.Length > 0) c.layout.ConfigName = a[0]; },
@@ -125,6 +149,7 @@ namespace DocMe
                     index = i,
                     name = ctx.name,
                     displayName = shader.GetPropertyDescription(i),
+                    englishName = shader.GetPropertyDescription(i),
                     attributes = attributes,
                 };
 
@@ -196,6 +221,47 @@ namespace DocMe
             c.group.toggle = c.current;
             c.group.toggleMode = mode;
             c.group.toggleKeyword = keyword;
+        }
+
+        /// <summary>
+        /// Puts the texts of the chosen language into the layout once: labels, tooltips, help, dropdown entries, [Header]
+        /// titles, section titles and help lines, category titles. Names, conditions and keys stay as they are.
+        /// </summary>
+        public void Localize(ShaderTexts texts)
+        {
+            foreach (var item in Ungrouped)
+                LocalizeItem(item, texts);
+            foreach (var section in Sections)
+            {
+                section.title = texts.Text("section." + section.name, section.name);
+                section.help = texts.Text("section." + section.name + ".help", null);
+                if (!string.IsNullOrEmpty(section.category))
+                    section.categoryTitle = texts.Text("category." + section.category, section.category);
+                foreach (var item in section.items)
+                    LocalizeItem(item, texts);
+            }
+        }
+
+        static void LocalizeItem(Item item, ShaderTexts texts)
+        {
+            item.displayName = texts.Text(item.name, item.englishName);
+            item.tooltip = texts.Text(item.name + ".tip", item.tooltip);
+            item.help = texts.Text(item.name + ".help", item.help);
+            foreach (var raw in item.attributes)
+            {
+                ParseAttr(raw, out string name, out string[] args);
+                if (name == "Header" && args.Length == 1)
+                {
+                    item.headerTitle = texts.Text(item.name + ".header", args[0]);
+                    continue;
+                }
+                var options = ShaderPropertyFields.OptionNames(name, args);
+                if (options == null)
+                    continue;
+                item.optionTitles ??= new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var option in options)
+                    item.optionTitles[option] = texts.Text(item.name + ".opt." + option, option);
+            }
         }
 
         void CheckConditions(Shader shader)
@@ -288,10 +354,11 @@ namespace DocMe
             => !string.IsNullOrEmpty(text) && text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
 
         public static bool ItemMatches(Item item, string search)
-            => TextMatches(item.displayName, search) || TextMatches(item.name, search);
+            => TextMatches(item.displayName, search) || TextMatches(item.englishName, search) || TextMatches(item.name, search);
 
         public static bool SectionMatches(Section section, string search)
-            => TextMatches(section.name, search) || TextMatches(section.category, search);
+            => TextMatches(section.name, search) || TextMatches(section.title, search)
+               || TextMatches(section.category, search) || TextMatches(section.categoryTitle, search);
 
         public static bool SectionHasItemMatch(Section section, string search)
         {

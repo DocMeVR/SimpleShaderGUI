@@ -908,20 +908,35 @@ namespace DocMe
             }
         }
 
+        static readonly Dictionary<string, Type> enumTypes = new Dictionary<string, Type>(StringComparer.Ordinal);
+
+        /// <summary>The English entries of an [Enum], [Dropdown] or [KeywordEnum] attribute; null for any other attribute.</summary>
+        internal static List<string> OptionNames(string attribute, string[] args)
+        {
+            if (EnumNames.Contains(attribute))
+                return TryReadEnum(args, out var names, out _) ? names : null;
+            if (KeywordEnumNames.Contains(attribute))
+                return new List<string>(args);
+            return null;
+        }
+
         public static bool TryReadEnum(string[] args, out List<string> names, out List<int> values)
         {
             names = new List<string>();
             values = new List<int>();
             if (args.Length == 1)
             {
-                Type type = null;
-                foreach (var candidate in TypeCache.GetTypesDerivedFrom(typeof(Enum)))
+                if (!enumTypes.TryGetValue(args[0], out var type))
                 {
-                    if (candidate.Name == args[0] || candidate.FullName == args[0])
+                    foreach (var candidate in TypeCache.GetTypesDerivedFrom(typeof(Enum)))
                     {
-                        type = candidate;
-                        break;
+                        if (candidate.Name == args[0] || candidate.FullName == args[0])
+                        {
+                            type = candidate;
+                            break;
+                        }
                     }
+                    enumTypes[args[0]] = type;
                 }
                 if (type == null || !type.IsEnum)
                     return false;
