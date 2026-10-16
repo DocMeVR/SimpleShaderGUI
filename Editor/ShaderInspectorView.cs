@@ -45,6 +45,7 @@ namespace DocMe
         public const string ChangedClass = "docme-si-changed";
         public const string HeaderToggleClass = "docme-si-header-toggle";
         public const string SectionOffClass = "docme-si-section--off";
+        public const string ReviewNoteClass = "docme-si-review-note";
         public const string ChangedTooltip = "Changed from the shader's default";
 
         /// <summary>Test seam: runs first in every refresh, so a test can stand in for a drawer or material that throws.</summary>
@@ -60,6 +61,8 @@ namespace DocMe
         public const string InstancingName = "docme-si-instancing";
         public const string DoubleSidedGIName = "docme-si-double-sided-gi";
         public const string ClassicName = "docme-si-classic";
+        public const string LanguageName = "docme-si-language";
+        public const string ReviewNoteName = "docme-si-language-review";
 
         sealed class SectionView
         {
@@ -88,6 +91,9 @@ namespace DocMe
         readonly Shader shader;
         readonly ShaderLayout layout;
         readonly SimpleShaderConfig config;
+        readonly ShaderTexts texts;
+        readonly int builtGeneration;
+        string[] queueNames;
         readonly Object[] targetsAtMount;
         readonly string[] propertyNames;
         readonly List<ShaderPropertyRow> rows = new List<ShaderPropertyRow>();
@@ -108,6 +114,7 @@ namespace DocMe
         DropdownField renderQueue;
         IntegerField renderQueueValue;
         Toggle instancing, doubleSidedGI, classic;
+        DropdownField languagePicker;
         MaterialProperty[] hostProperties;
         long signature;
         bool checkQueued;
@@ -126,6 +133,7 @@ namespace DocMe
         public bool HooksReleased => !hooked;
         internal ShaderLayout Layout => layout;
         internal SimpleShaderConfig Config => config;
+        internal ShaderTexts Texts => texts;
         internal IReadOnlyList<ShaderPropertyRow> Rows => rows;
         public IReadOnlyList<Foldout> SectionFoldouts => sections.Select(s => s.foldout).ToList();
         public IReadOnlyList<Foldout> LinkBoxFoldouts => linkBoxes.Select(b => b.foldout).ToList();
@@ -140,6 +148,9 @@ namespace DocMe
             shader = ((Material)editor.target).shader;
             targetsAtMount = editor.targets.ToArray();
             layout = ShaderLayout.Build(shader);
+            builtGeneration = ShaderTexts.Generation;
+            texts = ShaderTexts.For(layout.ConfigName);
+            layout.Localize(texts);
             config = ShaderUiServices.LoadConfig(layout.ConfigName);
             propertyNames = new string[layout.PropertyCount];
             for (int i = 0; i < propertyNames.Length; i++)
@@ -153,8 +164,10 @@ namespace DocMe
             var sheet = ShaderInspectorStyles.Sheet;
             if (sheet != null)
                 styleSheets.Add(sheet);
+            ApplyFont();
 
             BuildBanner();
+            BuildLanguage();
             BuildSearch();
             BuildBody();
             BuildFooter();
@@ -243,6 +256,13 @@ namespace DocMe
             }
             // Unity disables the whole inspector of a material that is not open for edit; inside it the folds could not open.
             if (ShaderUiServices.Classic || (Container != null && !Container.enabledInHierarchy))
+            {
+                ShaderInspectorMount.Unmount(this);
+                Container?.MarkDirtyLayout();
+                Editor.Repaint();
+                return;
+            }
+            if (ShaderUiLanguage.Current != texts.Language || ShaderTexts.Generation != builtGeneration)
             {
                 ShaderInspectorMount.Unmount(this);
                 Container?.MarkDirtyLayout();
@@ -620,6 +640,73 @@ namespace DocMe
             }
         }
 
+        /// <summary>A Shader UI text in the inspector's language; the English stands in the code.</summary>
+        public string Ui(string key, string english) => texts.Ui(key, english);
+
+        string UiFormat(string key, string english, params object[] args) => texts.UiFormat(key, english, args);
+
+        /// <summary>A link label or link box title from the config, in the inspector's language.</summary>
+        string LinkText(string text) => string.IsNullOrEmpty(text) ? text : texts.Text("link." + text, text);
+
+        static Font japaneseFont;
+
+        /// <summary>Japanese in a Japanese font: outside Japan, Windows otherwise draws the same characters with Chinese glyph shapes.</summary>
+        void ApplyFont()
+        {
+            if (ShaderUiLanguage.BaseOf(texts.Language) != "ja")
+                return;
+            if (japaneseFont == null)
+            {
+                japaneseFont = Font.CreateDynamicFontFromOSFont(new[] { "Yu Gothic UI", "Meiryo UI", "Noto Sans CJK JP" }, 12);
+                if (japaneseFont != null)
+                    japaneseFont.hideFlags = HideFlags.HideAndDontSave;
+            }
+            if (japaneseFont != null)
+                style.unityFontDefinition = FontDefinition.FromFont(japaneseFont);
+        }
+
+        /// <summary>The Language switch, labelled in English in every language so anyone can find it; hidden while only English exists.</summary>
+        void BuildLanguage()
+        {
+            var codes = texts.Languages;
+            if (codes.Count < 2)
+                return;
+            var names = codes.Select(ShaderUiLanguage.NativeName).ToList();
+            languagePicker = new DropdownField("Language", names, IndexOfCode(codes, texts.Language))
+            {
+                name = LanguageName,
+                tooltip = Ui("ui.language.tooltip", "The language of this inspector. Modular Avatar and other tools that use NDMF share this choice."),
+            };
+            languagePicker.AddToClassList(BaseField<string>.alignedFieldUssClassName);
+            languagePicker.RegisterValueChangedCallback(_ =>
+            {
+                int i = languagePicker.index;
+                if (i < 0 || i >= codes.Count)
+                    return;
+                ShaderUiLanguage.Set(codes[i]);
+                ShaderInspectorMount.Defer(Check);
+            });
+            Add(languagePicker);
+            if (texts.Reviewed)
+                return;
+            var note = new Label(Ui("ui.language.review", "This translation has not been checked by a native speaker yet.")) { name = ReviewNoteName };
+            note.AddToClassList(ReviewNoteClass);
+            Add(note);
+        }
+
+        /// <summary>The entry of the language in use: the chosen one, else one of the same base language, else English.</summary>
+        internal static int IndexOfCode(IReadOnlyList<string> codes, string language)
+        {
+            for (int i = 0; i < codes.Count; i++)
+                if (codes[i] == language)
+                    return i;
+            string baseLanguage = ShaderUiLanguage.BaseOf(language);
+            for (int i = 0; i < codes.Count; i++)
+                if (ShaderUiLanguage.BaseOf(codes[i]) == baseLanguage)
+                    return i;
+            return 0;
+        }
+
         void BuildBanner()
         {
             if (config == null)
@@ -682,7 +769,7 @@ namespace DocMe
                     }
                     first = false;
                     var icon = ShaderUiServices.IconOf(link);
-                    string text = string.IsNullOrEmpty(link.label) && icon == null ? link.url : link.label;
+                    string text = string.IsNullOrEmpty(link.label) && icon == null ? link.url : LinkText(link.label);
                     strip.Add(LinkElement(icon, text, link.url, iconSize));
                 }
                 Add(strip);
@@ -745,18 +832,18 @@ namespace DocMe
                 row.Add(icon);
             }
 
-            search = new TextField { name = SearchName, tooltip = "Shows only the properties whose name contains this text. Start with s: to search section names instead." };
+            search = new TextField { name = SearchName, tooltip = Ui("ui.search.tooltip", "Shows only the properties whose name contains this text. Start with s: to search section names instead.") };
             search.RegisterValueChangedCallback(e => ApplySearch(e.newValue, remember: true));
             row.Add(search);
 
-            placeholder = new Label("Search properties, or s: for sections") { pickingMode = PickingMode.Ignore };
+            placeholder = new Label(Ui("ui.search.placeholder", "Search properties, or s: for sections")) { pickingMode = PickingMode.Ignore };
             placeholder.AddToClassList(PlaceholderClass);
             var input = search.Q(className: TextField.inputUssClassName);
             (input ?? search).Add(placeholder);
             search.RegisterCallback<FocusInEvent>(_ => UpdatePlaceholder(true));
             search.RegisterCallback<FocusOutEvent>(_ => UpdatePlaceholder(false));
 
-            clear = new Button(() => search.value = "") { name = ClearName, text = "✕", tooltip = "Clears the search." };
+            clear = new Button(() => search.value = "") { name = ClearName, text = "✕", tooltip = Ui("ui.search.clear", "Clears the search.") };
             row.Add(clear);
             Add(row);
         }
@@ -795,16 +882,18 @@ namespace DocMe
                 view.group.AddToClassList(SectionGroupClass);
                 if (!string.IsNullOrEmpty(section.category))
                 {
-                    var category = new Label(section.category) { name = "category-" + section.name };
+                    var category = new Label(section.categoryTitle) { name = "category-" + section.name };
                     category.AddToClassList(CategoryClass);
                     view.group.Add(category);
                 }
 
-                view.foldout = new Foldout { text = section.name, name = "section-" + section.name };
+                view.foldout = new Foldout { text = section.title, name = "section-" + section.name };
                 view.foldout.AddToClassList(SectionClass);
                 view.foldout.SetValueWithoutNotify(ShaderUiServices.Prefs.GetBool(view.key, !section.startClosed));
                 MarkOpen(view.foldout);
                 view.header = view.foldout.Q(className: Foldout.toggleUssClassName);
+                if (view.header != null && !string.IsNullOrEmpty(section.help))
+                    view.header.tooltip = section.help;
                 if (view.header != null)
                     sectionsByHeader[view.header] = view;
                 if (section.toggle != null)
@@ -872,9 +961,9 @@ namespace DocMe
         }
 
         /// <summary>The small accent bar in the inspector's left margin that shows a value differs from the shader's default.</summary>
-        static VisualElement NewMark(string name)
+        VisualElement NewMark(string name)
         {
-            var mark = new VisualElement { name = name, tooltip = ChangedTooltip };
+            var mark = new VisualElement { name = name, tooltip = Ui("ui.changed", ChangedTooltip) };
             mark.AddToClassList(ChangedClass);
             mark.style.display = DisplayStyle.None;
             return mark;
@@ -942,7 +1031,7 @@ namespace DocMe
         {
             string title = ShaderLayout.LinkBoxTitle(box);
             string key = layout.LinkBoxKey(title);
-            var foldout = new Foldout { text = title, name = "linkbox-" + title };
+            var foldout = new Foldout { text = string.IsNullOrEmpty(box.title) ? Ui("ui.links", "Links") : LinkText(box.title), name = "linkbox-" + title };
             foldout.AddToClassList(SectionClass);
             foldout.AddToClassList(LinkBoxClass);
             foldout.SetValueWithoutNotify(ShaderUiServices.Prefs.GetBool(key, !box.startCollapsed));
@@ -958,7 +1047,7 @@ namespace DocMe
             {
                 if (link == null)
                     continue;
-                string label = string.IsNullOrEmpty(link.label) ? link.url : link.label;
+                string label = string.IsNullOrEmpty(link.label) ? link.url : LinkText(link.label);
                 var row = LinkElement(ShaderUiServices.IconOf(link), label, link.url, new Vector2(14f, 14f));
                 row.AddToClassList(LinkRowClass);
                 foldout.Add(row);
@@ -1029,20 +1118,20 @@ namespace DocMe
         void AddRowItems(DropdownMenu menu, ShaderPropertyRow row)
         {
             bool writable = Writable(row);
-            menu.AppendAction("Copy", _ => CopyRow(row), When(TryReadCurrent(row, out _)));
-            menu.AppendAction("Paste", _ => PasteRow(row), When(writable && TryReadPaste(row, out _)));
-            menu.AppendAction("Reset to default", _ => ResetRow(row), When(writable));
+            menu.AppendAction(Ui("ui.menu.copy", "Copy"), _ => CopyRow(row), When(TryReadCurrent(row, out _)));
+            menu.AppendAction(Ui("ui.menu.paste", "Paste"), _ => PasteRow(row), When(writable && TryReadPaste(row, out _)));
+            menu.AppendAction(Ui("ui.menu.reset", "Reset to default"), _ => ResetRow(row), When(writable));
         }
 
         void AddSectionItems(DropdownMenu menu, SectionView view)
         {
             bool canWrite = !failed && IsEditable();
-            menu.AppendAction("Copy section", _ => CopySection(view), DropdownMenuAction.Status.Normal);
-            menu.AppendAction("Paste section", _ => PasteSection(view), When(canWrite && SectionPaste(view).Count > 0));
-            menu.AppendAction("Reset section to defaults", _ => ResetSection(view), When(canWrite));
+            menu.AppendAction(Ui("ui.menu.copySection", "Copy section"), _ => CopySection(view), DropdownMenuAction.Status.Normal);
+            menu.AppendAction(Ui("ui.menu.pasteSection", "Paste section"), _ => PasteSection(view), When(canWrite && SectionPaste(view).Count > 0));
+            menu.AppendAction(Ui("ui.menu.resetSection", "Reset section to defaults"), _ => ResetSection(view), When(canWrite));
             menu.AppendSeparator();
-            menu.AppendAction("Expand all sections", _ => SetAllSections(true), DropdownMenuAction.Status.Normal);
-            menu.AppendAction("Collapse all sections", _ => SetAllSections(false), DropdownMenuAction.Status.Normal);
+            menu.AppendAction(Ui("ui.menu.expandAll", "Expand all sections"), _ => SetAllSections(true), DropdownMenuAction.Status.Normal);
+            menu.AppendAction(Ui("ui.menu.collapseAll", "Collapse all sections"), _ => SetAllSections(false), DropdownMenuAction.Status.Normal);
         }
 
         /// <summary>The property's value on the selected materials; false while they differ, since there is no one value to copy.</summary>
@@ -1088,13 +1177,13 @@ namespace DocMe
         void PasteRow(ShaderPropertyRow row)
         {
             if (Writable(row) && TryReadPaste(row, out var value))
-                WriteAsOneStep("Paste " + row.item.displayName, new List<(ShaderPropertyRow, ShaderValue)> { (row, value) }, reset: false);
+                WriteAsOneStep(UiFormat("ui.undo.paste", "Paste {0}", row.item.displayName), new List<(ShaderPropertyRow, ShaderValue)> { (row, value) }, reset: false);
         }
 
         void ResetRow(ShaderPropertyRow row)
         {
             if (Writable(row))
-                WriteAsOneStep("Reset " + row.item.displayName, new List<(ShaderPropertyRow, ShaderValue)> { (row, row.defaultValue) }, reset: true);
+                WriteAsOneStep(UiFormat("ui.undo.reset", "Reset {0}", row.item.displayName), new List<(ShaderPropertyRow, ShaderValue)> { (row, row.defaultValue) }, reset: true);
         }
 
         void CopySection(SectionView view)
@@ -1127,7 +1216,7 @@ namespace DocMe
         void PasteSection(SectionView view)
         {
             if (!failed && IsEditable())
-                WriteAsOneStep("Paste Section " + view.section.name, SectionPaste(view), reset: false);
+                WriteAsOneStep(UiFormat("ui.undo.pasteSection", "Paste Section {0}", view.section.title), SectionPaste(view), reset: false);
         }
 
         void ResetSection(SectionView view)
@@ -1135,7 +1224,7 @@ namespace DocMe
             if (failed || !IsEditable())
                 return;
             var writes = view.AllRows.Where(Writable).Select(r => (r, r.defaultValue)).ToList();
-            WriteAsOneStep("Reset Section " + view.section.name, writes, reset: true);
+            WriteAsOneStep(UiFormat("ui.undo.resetSection", "Reset Section {0}", view.section.title), writes, reset: true);
         }
 
         /// <summary>
@@ -1185,10 +1274,12 @@ namespace DocMe
             var footer = new VisualElement { name = "docme-si-footer" };
             footer.AddToClassList(FooterClass);
 
-            renderQueue = new MixedDropdownField("Render Queue", new List<string>(QueueNames), 0)
+            queueNames = (string[])QueueNames.Clone();
+            queueNames[0] = Ui("ui.queue.fromShader", "From Shader");
+            renderQueue = new MixedDropdownField(Ui("ui.queue", "Render Queue"), new List<string>(queueNames), 0)
             {
                 name = RenderQueueName,
-                tooltip = "The order this material draws in. From Shader uses the shader's own queue.",
+                tooltip = Ui("ui.queue.tooltip", "The order this material draws in. From Shader uses the shader's own queue."),
             };
             renderQueue.AddToClassList(BaseField<string>.alignedFieldUssClassName);
             renderQueue.RegisterValueChangedCallback(_ =>
@@ -1197,31 +1288,35 @@ namespace DocMe
                 if (i >= 0 && i < queueValues.Count)
                     SetRenderQueue(queueValues[i]);
             });
-            renderQueueValue = new MixedIntegerField { name = RenderQueueValueName, isDelayed = true, tooltip = "The exact render queue number." };
+            renderQueueValue = new MixedIntegerField { name = RenderQueueValueName, isDelayed = true, tooltip = Ui("ui.queue.value", "The exact render queue number.") };
             renderQueueValue.AddToClassList(QueueValueClass);
             renderQueueValue.RegisterValueChangedCallback(e => SetRenderQueue(e.newValue));
             renderQueue.Add(renderQueueValue);
             footer.Add(renderQueue);
 
-            instancing = new MixedToggle("Enable GPU Instancing") { name = InstancingName, tooltip = "Lets Unity draw many copies of this material in one go." };
+            instancing = new MixedToggle(Ui("ui.instancing", "Enable GPU Instancing"))
+            {
+                name = InstancingName,
+                tooltip = Ui("ui.instancing.tooltip", "Lets Unity draw many copies of this material in one go."),
+            };
             instancing.AddToClassList(BaseField<bool>.alignedFieldUssClassName);
-            instancing.RegisterValueChangedCallback(e => SetMaterialFlag("Enable GPU Instancing", m => m.enableInstancing = e.newValue));
+            instancing.RegisterValueChangedCallback(e => SetMaterialFlag(instancing.label, m => m.enableInstancing = e.newValue));
             instancing.style.display = HasInstancing(shader) ? DisplayStyle.Flex : DisplayStyle.None;
             footer.Add(instancing);
 
-            doubleSidedGI = new MixedToggle("Double Sided Global Illumination")
+            doubleSidedGI = new MixedToggle(Ui("ui.gi", "Double Sided Global Illumination"))
             {
                 name = DoubleSidedGIName,
-                tooltip = "Lets baked lighting treat both sides of the mesh as lit surfaces.",
+                tooltip = Ui("ui.gi.tooltip", "Lets baked lighting treat both sides of the mesh as lit surfaces."),
             };
             doubleSidedGI.AddToClassList(BaseField<bool>.alignedFieldUssClassName);
-            doubleSidedGI.RegisterValueChangedCallback(e => SetMaterialFlag("Double Sided Global Illumination", m => m.doubleSidedGI = e.newValue));
+            doubleSidedGI.RegisterValueChangedCallback(e => SetMaterialFlag(doubleSidedGI.label, m => m.doubleSidedGI = e.newValue));
             footer.Add(doubleSidedGI);
 
-            classic = new Toggle("Classic inspector")
+            classic = new Toggle(Ui("ui.classic", "Classic inspector"))
             {
                 name = ClassicName,
-                tooltip = "Draws every DocMe shader material with the older inspector. Turn it off there to come back to this one.",
+                tooltip = Ui("ui.classic.tooltip", "Draws every DocMe shader material with the older inspector. Turn it off there to come back to this one."),
             };
             classic.AddToClassList(BaseField<bool>.alignedFieldUssClassName);
             classic.RegisterValueChangedCallback(e =>
@@ -1258,7 +1353,7 @@ namespace DocMe
             int raw = RawRenderQueue(first);
             bool mixedQueue = materials.Any(m => RawRenderQueue(m) != raw);
 
-            var names = new List<string>(QueueNames);
+            var names = new List<string>(queueNames);
             queueValues.Clear();
             queueValues.AddRange(QueueValues);
             int index = Array.IndexOf(QueueValues, raw);
@@ -1307,7 +1402,7 @@ namespace DocMe
             if (failed || targets.Length == 0)
                 return;
             queue = Mathf.Clamp(queue, -1, 5000);
-            Undo.RecordObjects(targets, "Modify Render Queue of " + TargetTitle(targets));
+            Undo.RecordObjects(targets, UiFormat("ui.undo.queue", "Modify Render Queue of {0}", TargetTitle(targets)));
             foreach (var target in targets)
                 if (target is Material material)
                     material.renderQueue = queue;
@@ -1322,7 +1417,7 @@ namespace DocMe
             var targets = LiveTargets();
             if (failed || targets.Length == 0)
                 return;
-            Undo.RecordObjects(targets, "Modify " + label + " of " + TargetTitle(targets));
+            Undo.RecordObjects(targets, UiFormat("ui.undo.flag", "Modify {0} of {1}", label, TargetTitle(targets)));
             foreach (var target in targets)
                 if (target is Material material)
                     apply(material);
@@ -1332,8 +1427,8 @@ namespace DocMe
             WriteCount++;
         }
 
-        static string TargetTitle(Object[] targets)
-            => targets.Length == 1 ? targets[0].name : targets.Length + " Materials";
+        string TargetTitle(Object[] targets)
+            => targets.Length == 1 ? targets[0].name : UiFormat("ui.materials", "{0} Materials", targets.Length);
 
         public void ApplySearch(string text) => ApplySearch(text, remember: true);
 

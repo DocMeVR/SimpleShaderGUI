@@ -17,6 +17,7 @@
 .docme-si-search-icon { width: 16px; height: 16px; margin: 0 2px 0 0; flex-shrink: 0; }
 .docme-si-search-row .unity-text-field { flex-grow: 1; flex-shrink: 1; margin: 0 2px 0 0; }
 .docme-si-placeholder { position: absolute; left: 4px; top: 0; bottom: 0; -unity-text-align: middle-left; color: var(--docme-si-muted); padding: 0; margin: 0; }
+.docme-si-review-note { font-size: 10px; color: var(--docme-si-muted); white-space: normal; margin: 0 0 4px 4px; padding: 0; }
 .docme-si-search-row .unity-button { width: 22px; height: 18px; margin: 0; padding: 0; flex-shrink: 0; }
 
 .docme-si-category { -unity-font-style: bold; font-size: 13px; color: var(--docme-si-accent); margin: 6px 0 2px 0; padding: 0; }

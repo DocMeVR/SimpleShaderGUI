@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -23,6 +24,9 @@ namespace DocMe
 
         /// <summary>World x where the value column of aligned fields starts, or NaN before the first layout.</summary>
         float ValueColumnX { get; }
+
+        /// <summary>A Shader UI text in the inspector's language; the English stands in the code.</summary>
+        string Ui(string key, string english);
     }
 
     internal sealed class ShaderPropertyRow
@@ -284,7 +288,7 @@ namespace DocMe
                 if (decoration.custom != null)
                     AddDecoratorContainer(host, row, decoration.custom, i);
                 else
-                    AddDecoration(row.root, decoration.name, decoration.args);
+                    AddDecoration(row.root, decoration.name, decoration.args, row.item.headerTitle);
             }
 
             var type = shader.GetPropertyType(item.index);
@@ -471,7 +475,7 @@ namespace DocMe
             return e is ExitGUIException;
         }
 
-        static void AddDecoration(VisualElement root, string name, string[] args)
+        static void AddDecoration(VisualElement root, string name, string[] args, string headerTitle)
         {
             if (SpaceNames.Contains(name))
             {
@@ -486,7 +490,7 @@ namespace DocMe
             }
             if (args.Length != 1)
                 return;
-            var header = new Label(args[0]);
+            var header = new Label(headerTitle ?? args[0]);
             header.AddToClassList(HeaderClass);
             root.Add(header);
         }
@@ -619,7 +623,8 @@ namespace DocMe
                 case "Enum":
                 {
                     TryReadEnum(plan.drawerArgs, out var names, out var values);
-                    var dropdown = Prepare(row, new MixedDropdownField(row.item.displayName, names, -1), KindEnum);
+                    var shown = names.Select(row.item.OptionTitle).ToList();
+                    var dropdown = Prepare(row, new MixedDropdownField(row.item.displayName, shown, -1), KindEnum);
                     dropdown.RegisterValueChangedCallback(_ =>
                     {
                         int i = dropdown.index;
@@ -636,14 +641,15 @@ namespace DocMe
                     {
                         int current = isInt ? p.intValue : (int)p.floatValue;
                         int i = values.IndexOf(current);
-                        dropdown.SetShown(i >= 0 ? names[i] : "", p.hasMixedValue);
+                        dropdown.SetShown(i >= 0 ? shown[i] : "", p.hasMixedValue);
                     };
                     return true;
                 }
                 case "KeywordEnum":
                 {
                     var names = new List<string>(plan.drawerArgs);
-                    var dropdown = Prepare(row, new MixedDropdownField(row.item.displayName, names, -1), KindKeywordEnum);
+                    var shown = names.Select(row.item.OptionTitle).ToList();
+                    var dropdown = Prepare(row, new MixedDropdownField(row.item.displayName, shown, -1), KindKeywordEnum);
                     dropdown.RegisterValueChangedCallback(_ =>
                     {
                         int i = dropdown.index;
@@ -659,7 +665,7 @@ namespace DocMe
                     row.pull = p =>
                     {
                         int i = isInt ? p.intValue : (int)p.floatValue;
-                        dropdown.SetShown(i >= 0 && i < names.Count ? names[i] : "", p.hasMixedValue);
+                        dropdown.SetShown(i >= 0 && i < shown.Count ? shown[i] : "", p.hasMixedValue);
                     };
                     row.assign = (p, v) =>
                     {
@@ -731,8 +737,8 @@ namespace DocMe
             MixedVector2Field tiling = null, offset = null;
             if (scaleOffset)
             {
-                tiling = new MixedVector2Field("Tiling") { name = name + "-tiling", tooltip = "How often the texture repeats across the surface." };
-                offset = new MixedVector2Field("Offset") { name = name + "-offset", tooltip = "Shifts the texture across the surface." };
+                tiling = new MixedVector2Field(host.Ui("ui.texture.tiling", "Tiling")) { name = name + "-tiling", tooltip = host.Ui("ui.texture.tilingTip", "How often the texture repeats across the surface.") };
+                offset = new MixedVector2Field(host.Ui("ui.texture.offset", "Offset")) { name = name + "-offset", tooltip = host.Ui("ui.texture.offsetTip", "Shifts the texture across the surface.") };
                 tiling.AddToClassList(BaseField<float>.alignedFieldUssClassName);
                 offset.AddToClassList(BaseField<float>.alignedFieldUssClassName);
                 UndoGrouping.Attach(tiling);
@@ -743,8 +749,8 @@ namespace DocMe
 
             var fix = new VisualElement { name = name + "-normal-fix" };
             fix.AddToClassList(NormalFixClass);
-            fix.Add(new HelpBox("This texture is not marked as a normal map.", HelpBoxMessageType.Warning));
-            var fixButton = new Button { text = "Fix Now", tooltip = "Changes the texture's import type to Normal map." };
+            fix.Add(new HelpBox(host.Ui("ui.texture.notNormal", "This texture is not marked as a normal map."), HelpBoxMessageType.Warning));
+            var fixButton = new Button { text = host.Ui("ui.texture.fix", "Fix Now"), tooltip = host.Ui("ui.texture.fixTip", "Changes the texture's import type to Normal map.") };
             fix.Add(fixButton);
             fix.style.display = DisplayStyle.None;
 
