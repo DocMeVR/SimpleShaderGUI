@@ -10,9 +10,9 @@ namespace DocMe
     /// <summary>
     /// The shader author vocabulary read from a shader's Properties block: which property sits in which
     /// [Foldable] section, its [Tip] and [Help], the [Category] above a section, the [Config] asset name, the
-    /// [ShowIf] conditions and the [SectionToggle] header switches. Both the IMGUI path of SimpleShaderGUI and the
-    /// UI Toolkit view read the same layout, so they agree on sections, search results and the EditorPrefs keys of
-    /// the folds.
+    /// [ShowIf] conditions, the [SectionToggle] header switches and the [NoAlpha] colours. Both the IMGUI path of
+    /// SimpleShaderGUI and the UI Toolkit view read the same layout, so they agree on sections, search results and the
+    /// EditorPrefs keys of the folds.
     /// </summary>
     internal sealed class ShaderLayout
     {
@@ -38,6 +38,9 @@ namespace DocMe
             public Dictionary<string, string> optionTitles;
             public string[] attributes = Array.Empty<string>();
             public Condition showIf;
+
+            /// <summary>Set by [NoAlpha]: the colour field shows no alpha, for colours whose alpha the shader never reads.</summary>
+            public bool noAlpha;
 
             public string OptionTitle(string english)
                 => optionTitles != null && english != null && optionTitles.TryGetValue(english, out var title) ? title : english;
@@ -107,6 +110,7 @@ namespace DocMe
             },
             ["Tip"]      = (a, c) => { if (c.current != null && a.Length > 0) c.current.tooltip = a[0]; },
             ["Help"]     = (a, c) => { if (c.current != null && a.Length > 0) c.current.help = a[0]; },
+            ["NoAlpha"]  = (a, c) => { if (c.current != null) c.current.noAlpha = true; },
             ["Config"]   = (a, c) => { if (a.Length > 0) c.layout.ConfigName = a[0]; },
             ["ShowIf"]   = ReadShowIf,
             ["SectionToggle"] = ReadSectionToggle,

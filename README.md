@@ -40,6 +40,7 @@ into a Unity 2022.3 project.
 | `[Config(AssetName)]` | Name a Shader UI Config asset for the banner and links |
 | `[ShowIf(_Prop)]` / `[ShowIf(_Prop, value)]` | Shows the property only while `_Prop` is not 0, or only while `_Prop` equals `value`. `_Prop` is a Float, Range or Int property, such as a Toggle, ToggleUI or Enum. On the property that carries `[Foldable]`, it shows or hides the whole section, header included |
 | `[SectionToggle]` | On the first property of a section, when it is a `[Toggle]`, `[ToggleOff]`, `[ToggleUI]` or plain Float: draws it as a checkbox in the section header, left of the title, with the property's `[Tip]` as its tooltip. Clicking it never opens or closes the section. While it is off, the section's rows are dimmed but stay editable. A `[Help]`, `[Space]` or `[Header]` on that property is not drawn |
+| `[NoAlpha]` | On a Color property: its colour field shows no alpha, for a colour whose alpha the shader does not read. Unity knows no drawer by that name, so it prints nothing. The older inspector draws Unity's own colour field and keeps the alpha |
 
 Attribute arguments accept plain text only (a ShaderLab limitation), so URLs,
 paths, and icons live in the config asset and are edited in its Inspector.

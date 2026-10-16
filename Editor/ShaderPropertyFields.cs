@@ -690,7 +690,7 @@ namespace DocMe
 
         static void BuildColor(IShaderFieldHost host, ShaderPropertyRow row, bool hdr)
         {
-            var field = Prepare(row, new MixedColorField(row.item.displayName) { showAlpha = true, hdr = hdr }, KindColor);
+            var field = Prepare(row, new MixedColorField(row.item.displayName) { showAlpha = !row.item.noAlpha, hdr = hdr }, KindColor);
             string name = row.item.name;
             field.RegisterValueChangedCallback(e => host.Write(name, p => p.colorValue = e.newValue, field));
             row.pull = p =>
