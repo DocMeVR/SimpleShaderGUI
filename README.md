@@ -69,6 +69,57 @@ write `[Dropdown(...)]` instead, with the same name and value pairs:
 shows it as a dropdown with every entry; Unity knows no drawer by that name, so it
 prints nothing (the older inspector shows a number box there).
 
+## Languages
+
+The inspector can show every text in the creator's language. Each language is one gettext `.po` file, found by its
+name anywhere in the project:
+
+- `<ConfigName>.<language>.po` for a shader, where `<ConfigName>` is the name in the shader's `[Config(...)]`, for
+  example `MyShader.en-US.po` and `MyShader.ja-JP.po`.
+- `DocMeShaderUI.<language>.po` for the inspector's own texts (search box, right click menu, footer). Japanese ships
+  in `Localization/`.
+
+With NDMF installed (Modular Avatar, Avatar Optimizer), the inspector follows the language picked there. Otherwise
+the Language switch at the top of the inspector chooses it. The choice is stored per user, never in a project file,
+and the switch appears as soon as a second language exists.
+
+| Text | Key |
+|---|---|
+| Label | `_Prop` |
+| Tooltip | `_Prop.tip` |
+| Help box | `_Prop.help` |
+| Dropdown entry | `_Prop.opt.<English entry>` |
+| `[Header]` title | `_Prop.header` |
+| Section title | `section.<Foldable name>` |
+| Section help, shown as the title's tooltip | `section.<Foldable name>.help` |
+| Category | `category.<Category name>` |
+| Link label or link box title | `link.<text>` |
+
+Labels, section titles and entries keep their English in the shader. Tooltips and help can live in the English file
+`<ConfigName>.en-US.po` instead of `[Tip]` and `[Help]`, so they can hold commas and full stops; the English file wins
+where both exist. A text a language lacks shows in English. Property names, keywords and section names never change
+with the language, so `[ShowIf]`, section switches and the config's section settings keep working. The classic
+inspector shows dropdown entries the way Unity draws them, in English.
+
+### Keeping language files current
+
+Right click the shader and pick **DocMe Shader UI > Update Language Files**. It creates the English file when there is
+none (taking over the `[Tip]` and `[Help]` texts), adds every new key to each language with its English in a `#. en:`
+comment, marks a translation whose English changed as `#, fuzzy` (the old English stays in `#. was:`), keeps the
+inspector's order and moves keys no setting uses any more to the end as obsolete entries. It never deletes a
+translation. An outdated translation shows in English until someone updates it and removes the `fuzzy` flag.
+
+To add a language, create an empty file such as `MyShader.ko-KR.po` and run Update Language Files. Poedit and other
+gettext editors open the files. A new file gets the header `X-DocMe-Reviewed: no`, which shows a short note under the
+Language switch; set it to `yes` once a native speaker has read the file. Once a file has shipped, keep its name: an
+update package cannot delete the old file.
+
+### Texts of the inspector itself
+
+Every text of the inspector goes through `Ui("ui.key", "English text")` or `UiFormat(...)` with plain string
+literals: Update Language Files reads those calls from the code to fill `DocMeShaderUI.<language>.po`. Write whole
+sentences with `{0}` placeholders, never sentences glued together from parts.
+
 ## How the inspector draws
 
 The material inspector is built with UI Toolkit. `SimpleShaderGUI` places its

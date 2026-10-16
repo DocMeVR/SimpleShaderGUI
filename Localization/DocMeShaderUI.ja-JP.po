@@ -1,0 +1,177 @@
+msgid ""
+msgstr ""
+"Language: ja-JP\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"X-DocMe-Reviewed: no\n"
+
+#. en: The language of this inspector. Modular Avatar and other tools that use NDMF share this choice.
+msgid "ui.language.tooltip"
+msgstr "このインスペクターの表示言語です。Modular Avatar など NDMF を使うツールと同じ設定を共有します。"
+
+#. en: This translation has not been checked by a native speaker yet.
+msgid "ui.language.review"
+msgstr "この翻訳はまだネイティブスピーカーの確認を受けていません。"
+
+#. en: Shows only the properties whose name contains this text. Start with s: to search section names instead.
+msgid "ui.search.tooltip"
+msgstr "名前にこの文字を含む設定だけを表示します。s: で始めるとセクション名で検索します。"
+
+#. en: Search properties, or s: for sections
+msgid "ui.search.placeholder"
+msgstr "設定を検索（s: でセクション）"
+
+#. en: Clears the search.
+msgid "ui.search.clear"
+msgstr "検索をクリアします。"
+
+#. en: Changed from the shader's default
+msgid "ui.changed"
+msgstr "シェーダーの初期値から変更されています"
+
+#. en: Links
+msgid "ui.links"
+msgstr "リンク"
+
+#. en: Copy
+msgid "ui.menu.copy"
+msgstr "コピー"
+
+#. en: Paste
+msgid "ui.menu.paste"
+msgstr "貼り付け"
+
+#. en: Reset to default
+msgid "ui.menu.reset"
+msgstr "初期値に戻す"
+
+#. en: Copy section
+msgid "ui.menu.copySection"
+msgstr "セクションをコピー"
+
+#. en: Paste section
+msgid "ui.menu.pasteSection"
+msgstr "セクションに貼り付け"
+
+#. en: Reset section to defaults
+msgid "ui.menu.resetSection"
+msgstr "セクションを初期値に戻す"
+
+#. en: Expand all sections
+msgid "ui.menu.expandAll"
+msgstr "すべてのセクションを開く"
+
+#. en: Collapse all sections
+msgid "ui.menu.collapseAll"
+msgstr "すべてのセクションを閉じる"
+
+#. en: Paste {0}
+msgid "ui.undo.paste"
+msgstr "{0} を貼り付け"
+
+#. en: Reset {0}
+msgid "ui.undo.reset"
+msgstr "{0} を初期値に戻す"
+
+#. en: Paste Section {0}
+msgid "ui.undo.pasteSection"
+msgstr "セクション {0} に貼り付け"
+
+#. en: Reset Section {0}
+msgid "ui.undo.resetSection"
+msgstr "セクション {0} を初期値に戻す"
+
+#. en: Modify Render Queue of {0}
+msgid "ui.undo.queue"
+msgstr "{0} のレンダーキューを変更"
+
+#. en: Modify {0} of {1}
+msgid "ui.undo.flag"
+msgstr "{1} の {0} を変更"
+
+#. en: {0} Materials
+msgid "ui.materials"
+msgstr "{0} 個のマテリアル"
+
+#. en: Render Queue
+msgid "ui.queue"
+msgstr "レンダーキュー"
+
+#. en: The order this material draws in. From Shader uses the shader's own queue.
+msgid "ui.queue.tooltip"
+msgstr "このマテリアルを描画する順番です。「シェーダーの値」はシェーダー自身の順番を使います。"
+
+#. en: From Shader
+msgid "ui.queue.fromShader"
+msgstr "シェーダーの値"
+
+#. en: The exact render queue number.
+msgid "ui.queue.value"
+msgstr "レンダーキューの正確な数値です。"
+
+#. en: Enable GPU Instancing
+msgid "ui.instancing"
+msgstr "GPU インスタンシング"
+
+#. en: Lets Unity draw many copies of this material in one go.
+msgid "ui.instancing.tooltip"
+msgstr "このマテリアルを使う多くのオブジェクトを、まとめて一度に描画できるようにします。"
+
+#. en: Double Sided Global Illumination
+msgid "ui.gi"
+msgstr "両面 GI"
+
+#. en: Lets baked lighting treat both sides of the mesh as lit surfaces.
+msgid "ui.gi.tooltip"
+msgstr "ベイクしたライティングで、メッシュの表と裏の両方を照らされる面として扱います。"
+
+#. en: Classic inspector
+msgid "ui.classic"
+msgstr "旧インスペクター"
+
+#. en: Draws every DocMe shader material with the older inspector. Turn it off there to come back to this one.
+msgid "ui.classic.tooltip"
+msgstr "DocMe シェーダーのすべてのマテリアルを旧インスペクターで表示します。旧インスペクター側でオフにすると、こちらに戻ります。"
+
+#. en: Tiling
+msgid "ui.texture.tiling"
+msgstr "タイリング"
+
+#. en: How often the texture repeats across the surface.
+msgid "ui.texture.tilingTip"
+msgstr "テクスチャを表面で繰り返す回数です。"
+
+#. en: Offset
+msgid "ui.texture.offset"
+msgstr "オフセット"
+
+#. en: Shifts the texture across the surface.
+msgid "ui.texture.offsetTip"
+msgstr "テクスチャを表面の上でずらします。"
+
+#. en: This texture is not marked as a normal map.
+msgid "ui.texture.notNormal"
+msgstr "このテクスチャはノーマルマップとして設定されていません。"
+
+#. en: Fix Now
+msgid "ui.texture.fix"
+msgstr "今すぐ修正"
+
+#. en: Changes the texture's import type to Normal map.
+msgid "ui.texture.fixTip"
+msgstr "テクスチャのインポート形式をノーマルマップに変更します。"
+
+#. en: Search properties. Prefix with s: to search sections.
+msgid "ui.classic.search"
+msgstr "設定を検索します。s: で始めるとセクションを検索します。"
+
+#. en: Draws every DocMe shader material with this older inspector. Turn it off to use the newer one.
+msgid "ui.classic.back"
+msgstr "DocMe シェーダーのすべてのマテリアルをこの旧インスペクターで表示します。オフにすると新しいインスペクターに戻ります。"
+
+#. en: Bake Fallback Picture
+msgid "ui.bake"
+msgstr "フォールバック画像を作成"
+
+#. en: Makes the picture players see when they block custom shaders, at the same size as the real shader.
+msgid "ui.bake.tooltip"
+msgstr "シェーダーを非表示にしているプレイヤーに見える画像を、本物のシェーダーと同じ大きさで作ります。"
