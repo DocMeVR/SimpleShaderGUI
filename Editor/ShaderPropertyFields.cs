@@ -123,6 +123,8 @@ namespace DocMe
         static readonly HashSet<string> IntRangeNames = new HashSet<string> { "IntRange", "MaterialIntRange" };
         static readonly HashSet<string> PowerSliderNames = new HashSet<string> { "PowerSlider", "MaterialPowerSlider" };
         static readonly HashSet<string> SpaceNames = new HashSet<string> { "Space", "MaterialSpace" };
+        internal static bool IsHeader(string attribute) => HeaderNames.Contains(attribute);
+
         static readonly HashSet<string> HeaderNames = new HashSet<string> { "Header", "MaterialHeader" };
         static readonly HashSet<string> FlagNames = new HashSet<string>
         {
@@ -282,13 +284,18 @@ namespace DocMe
                 return row;
             }
 
+            bool firstHeader = true;
             for (int i = 0; i < plan.decorations.Count; i++)
             {
                 var decoration = plan.decorations[i];
                 if (decoration.custom != null)
                     AddDecoratorContainer(host, row, decoration.custom, i);
                 else
-                    AddDecoration(row.root, decoration.name, decoration.args, row.item.headerTitle);
+                {
+                    bool header = IsHeader(decoration.name);
+                    AddDecoration(row.root, decoration.name, decoration.args, header && firstHeader ? row.item.headerTitle : null);
+                    firstHeader &= !header;
+                }
             }
 
             var type = shader.GetPropertyType(item.index);

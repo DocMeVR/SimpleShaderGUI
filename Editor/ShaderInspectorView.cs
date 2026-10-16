@@ -657,7 +657,7 @@ namespace DocMe
                 return;
             if (japaneseFont == null)
             {
-                japaneseFont = Font.CreateDynamicFontFromOSFont(new[] { "Yu Gothic UI", "Meiryo UI", "Noto Sans CJK JP" }, 12);
+                japaneseFont = Font.CreateDynamicFontFromOSFont(new[] { "Yu Gothic UI", "Meiryo UI", "Noto Sans CJK JP", "Hiragino Sans" }, 12);
                 if (japaneseFont != null)
                     japaneseFont.hideFlags = HideFlags.HideAndDontSave;
             }
@@ -963,7 +963,7 @@ namespace DocMe
         /// <summary>The small accent bar in the inspector's left margin that shows a value differs from the shader's default.</summary>
         VisualElement NewMark(string name)
         {
-            var mark = new VisualElement { name = name, tooltip = Ui("ui.changed", ChangedTooltip) };
+            var mark = new VisualElement { name = name, tooltip = Ui("ui.changed", "Changed from the shader's default") };
             mark.AddToClassList(ChangedClass);
             mark.style.display = DisplayStyle.None;
             return mark;

@@ -250,7 +250,7 @@ namespace DocMe
             foreach (var raw in item.attributes)
             {
                 ParseAttr(raw, out string name, out string[] args);
-                if (name == "Header" && args.Length == 1)
+                if (item.headerTitle == null && ShaderPropertyFields.IsHeader(name) && args.Length == 1)
                 {
                     item.headerTitle = texts.Text(item.name + ".header", args[0]);
                     continue;
