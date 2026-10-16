@@ -4,6 +4,14 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "X-DocMe-Reviewed: no\n"
 
+#. en: Bake Fallback Picture
+msgid "ui.bake"
+msgstr "フォールバック画像を作成"
+
+#. en: Makes the picture players see when they block custom shaders, at the same size as the real shader.
+msgid "ui.bake.tooltip"
+msgstr "シェーダーを非表示にしているプレイヤーに見える画像を、本物のシェーダーと同じ大きさで作ります。"
+
 #. en: The language of this inspector. Modular Avatar and other tools that use NDMF share this choice.
 msgid "ui.language.tooltip"
 msgstr "このインスペクターの表示言語です。Modular Avatar など NDMF を使うツールと同じ設定を共有します。"
@@ -80,17 +88,9 @@ msgstr "セクション {0} に貼り付け"
 msgid "ui.undo.resetSection"
 msgstr "セクション {0} を初期値に戻す"
 
-#. en: Modify Render Queue of {0}
-msgid "ui.undo.queue"
-msgstr "{0} のレンダーキューを変更"
-
-#. en: Modify {0} of {1}
-msgid "ui.undo.flag"
-msgstr "{1} の {0} を変更"
-
-#. en: {0} Materials
-msgid "ui.materials"
-msgstr "{0} 個のマテリアル"
+#. en: From Shader
+msgid "ui.queue.fromShader"
+msgstr "シェーダーの値"
 
 #. en: Render Queue
 msgid "ui.queue"
@@ -99,10 +99,6 @@ msgstr "レンダーキュー"
 #. en: The order this material draws in. From Shader uses the shader's own queue.
 msgid "ui.queue.tooltip"
 msgstr "このマテリアルを描画する順番です。「シェーダーの値」はシェーダー自身の順番を使います。"
-
-#. en: From Shader
-msgid "ui.queue.fromShader"
-msgstr "シェーダーの値"
 
 #. en: The exact render queue number.
 msgid "ui.queue.value"
@@ -131,6 +127,18 @@ msgstr "旧インスペクター"
 #. en: Draws every DocMe shader material with the older inspector. Turn it off there to come back to this one.
 msgid "ui.classic.tooltip"
 msgstr "DocMe シェーダーのすべてのマテリアルを旧インスペクターで表示します。旧インスペクター側でオフにすると、こちらに戻ります。"
+
+#. en: Modify Render Queue of {0}
+msgid "ui.undo.queue"
+msgstr "{0} のレンダーキューを変更"
+
+#. en: Modify {0} of {1}
+msgid "ui.undo.flag"
+msgstr "{1} の {0} を変更"
+
+#. en: {0} Materials
+msgid "ui.materials"
+msgstr "{0} 個のマテリアル"
 
 #. en: Tiling
 msgid "ui.texture.tiling"
@@ -167,11 +175,3 @@ msgstr "設定を検索します。s: で始めるとセクションを検索し
 #. en: Draws every DocMe shader material with this older inspector. Turn it off to use the newer one.
 msgid "ui.classic.back"
 msgstr "DocMe シェーダーのすべてのマテリアルをこの旧インスペクターで表示します。オフにすると新しいインスペクターに戻ります。"
-
-#. en: Bake Fallback Picture
-msgid "ui.bake"
-msgstr "フォールバック画像を作成"
-
-#. en: Makes the picture players see when they block custom shaders, at the same size as the real shader.
-msgid "ui.bake.tooltip"
-msgstr "シェーダーを非表示にしているプレイヤーに見える画像を、本物のシェーダーと同じ大きさで作ります。"
