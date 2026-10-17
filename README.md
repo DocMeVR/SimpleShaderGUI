@@ -80,9 +80,11 @@ name anywhere in the project:
 - `DocMeShaderUI.<language>.po` for the inspector's own texts (search box, right click menu, footer). Japanese ships
   in `Localization/`.
 
-With NDMF installed (Modular Avatar, Avatar Optimizer), the inspector follows the language picked there. Otherwise
-the Language switch at the top of the inspector chooses it. The choice is stored per user, never in a project file,
-and the switch appears as soon as a second language exists.
+The Language switch at the top of the inspector chooses the language. With NDMF installed (Modular Avatar, Avatar
+Optimizer), the choice is shared with NDMF: the inspector follows the language picked there, and the switch changes
+NDMF's language too. Without NDMF the switch keeps its own setting. Either way the choice is stored per user, never in
+a project file. The switch shows whenever a second language exists, which is always the case: the Shader UI ships
+Japanese for its own texts.
 
 | Text | Key |
 |---|---|
@@ -100,7 +102,7 @@ Labels, section titles and entries keep their English in the shader. Tooltips an
 `<ConfigName>.en-US.po` instead of `[Tip]` and `[Help]`, so they can hold commas and full stops; the English file wins
 where both exist. A text a language lacks shows in English. Property names, keywords and section names never change
 with the language, so `[ShowIf]`, section switches and the config's section settings keep working. The classic
-inspector shows dropdown entries the way Unity draws them, in English.
+inspector shows dropdown entries and `[Header]` titles the way Unity draws them, in English.
 
 ### Keeping language files current
 
@@ -110,10 +112,19 @@ comment, marks a translation whose English changed as `#, fuzzy` (the old Englis
 inspector's order and moves keys no setting uses any more to the end as obsolete entries. It never deletes a
 translation. An outdated translation shows in English until someone updates it and removes the `fuzzy` flag.
 
-To add a language, create an empty file such as `MyShader.ko-KR.po` and run Update Language Files. Poedit and other
-gettext editors open the files. A new file gets the header `X-DocMe-Reviewed: no`, which shows a short note under the
-Language switch; set it to `yes` once a native speaker has read the file. Once a file has shipped, keep its name: an
-update package cannot delete the old file.
+To add a language, create a file such as `MyShader.ko-KR.po` that starts with these three lines, then run Update
+Language Files:
+
+```
+msgid ""
+msgstr ""
+"Language: ko-KR\n"
+```
+
+Unity reads every `.po` file itself when it imports it, and prints "File couldn't be read" for an empty file or one
+without the `Language` line. Poedit and other gettext editors open the files. A new file gets the header
+`X-DocMe-Reviewed: no`, which shows a short note under the Language switch; set it to `yes` once a native speaker has
+read the file. Once a file has shipped, keep its name: an update package cannot delete the old file.
 
 ### Texts of the inspector itself
 
