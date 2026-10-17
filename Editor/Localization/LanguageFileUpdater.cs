@@ -369,6 +369,23 @@ namespace DocMe
 
         [MenuItem("Assets/DocMe Shader UI/Update Language Files", true)]
         static bool CanUpdateSelected()
-            => Selection.objects.OfType<Shader>().Any(s => !string.IsNullOrEmpty(ShaderLayout.Build(s).ConfigName));
+            => Selection.objects.OfType<Shader>().Any(s => !string.IsNullOrEmpty(ConfigNameOf(s)));
+
+        /// <summary>The name ShaderLayout.Build would find in the shader's [Config(...)], read from the attributes alone, because Unity asks for it every time the Assets menu opens.</summary>
+        internal static string ConfigNameOf(Shader shader)
+        {
+            string name = null;
+            int count = shader != null ? shader.GetPropertyCount() : 0;
+            for (int i = 0; i < count; i++)
+                foreach (var raw in shader.GetPropertyAttributes(i) ?? Array.Empty<string>())
+                {
+                    if (raw == null || raw.IndexOf("Config", StringComparison.Ordinal) < 0)
+                        continue;
+                    ShaderLayout.ParseAttr(raw, out string attribute, out string[] args);
+                    if (attribute == "Config" && args.Length > 0)
+                        name = args[0];
+                }
+            return name;
+        }
     }
 }

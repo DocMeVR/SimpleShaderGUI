@@ -14,6 +14,7 @@ namespace DocMe
     //   [Config(AssetName)]                              name a SimpleShaderConfig asset for banner + links
     //   [ShowIf(_Prop)] / [ShowIf(_Prop, value)]         show only while _Prop is not 0, or equals value
     //   [SectionToggle]                                  first property of a section as a checkbox in its header
+    //   [NoAlpha]                                        colour field without alpha, for a colour whose alpha the shader ignores
     //
     // Banner, banner buttons, link sections and section header links live in the
     // SimpleShaderConfig asset, edited in its Inspector. The shader only names it once.
