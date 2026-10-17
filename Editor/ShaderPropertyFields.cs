@@ -511,7 +511,34 @@ namespace DocMe
             row.field = field;
             row.kind = kind;
             row.root.Add(field);
+            GrowWithLabel(field);
             return field;
+        }
+
+        static void GrowWithLabel(VisualElement field)
+        {
+            var label = field.Q<Label>(className: BaseField<float>.labelUssClassName);
+            if (label != null)
+                label.RegisterCallback<GeometryChangedEvent>(e => GrowWithText((Label)e.target));
+        }
+
+        /// <summary>
+        /// The layout sizes a wrapping label at its exact fractional width, the text is drawn at the rounded width:
+        /// a label whose text just fits the first can need a second line in the second.
+        /// </summary>
+        static void GrowWithText(Label label)
+        {
+            var rect = label.contentRect;
+            if (string.IsNullOrEmpty(label.text) || rect.width <= 0f || label.resolvedStyle.whiteSpace != WhiteSpace.Normal)
+                return;
+            var size = label.MeasureTextSize(label.text, rect.width, VisualElement.MeasureMode.Exactly, 0f, VisualElement.MeasureMode.Undefined);
+            var style = label.resolvedStyle;
+            float needed = Mathf.Ceil(size.y + style.paddingTop + style.paddingBottom + style.borderTopWidth + style.borderBottomWidth);
+            var current = label.style.minHeight;
+            if (needed > label.layout.height + 0.5f)
+                label.style.minHeight = needed;
+            else if (current.keyword == StyleKeyword.Undefined && needed < current.value.value - 0.5f)
+                label.style.minHeight = StyleKeyword.Null;
         }
 
         static void BuildSlider(IShaderFieldHost host, Shader shader, ShaderPropertyRow row)
@@ -733,6 +760,7 @@ namespace DocMe
                 tooltip = row.item.tooltip ?? "",
             };
             objectField.AddToClassList(BaseField<float>.alignedFieldUssClassName);
+            GrowWithLabel(objectField);
             fields.Add(objectField);
 
             var thumb = new Image { name = name + "-thumb", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
@@ -748,6 +776,8 @@ namespace DocMe
                 offset = new MixedVector2Field(host.Ui("ui.texture.offset", "Offset")) { name = name + "-offset", tooltip = host.Ui("ui.texture.offsetTip", "Shifts the texture across the surface.") };
                 tiling.AddToClassList(BaseField<float>.alignedFieldUssClassName);
                 offset.AddToClassList(BaseField<float>.alignedFieldUssClassName);
+                GrowWithLabel(tiling);
+                GrowWithLabel(offset);
                 UndoGrouping.Attach(tiling);
                 UndoGrouping.Attach(offset);
                 fields.Add(tiling);
