@@ -515,7 +515,7 @@ namespace DocMe
             return field;
         }
 
-        static void GrowWithLabel(VisualElement field)
+        internal static void GrowWithLabel(VisualElement field)
         {
             var label = field.Q<Label>(className: BaseField<float>.labelUssClassName);
             if (label != null)
@@ -533,7 +533,7 @@ namespace DocMe
                 return;
             var size = label.MeasureTextSize(label.text, rect.width, VisualElement.MeasureMode.Exactly, 0f, VisualElement.MeasureMode.Undefined);
             var style = label.resolvedStyle;
-            float needed = Mathf.Ceil(size.y + style.paddingTop + style.paddingBottom + style.borderTopWidth + style.borderBottomWidth);
+            float needed = size.y + style.paddingTop + style.paddingBottom + style.borderTopWidth + style.borderBottomWidth;
             var current = label.style.minHeight;
             if (needed > label.layout.height + 0.5f)
                 label.style.minHeight = needed;

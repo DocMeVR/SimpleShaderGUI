@@ -696,6 +696,7 @@ namespace DocMe
                 tooltip = Ui("ui.language.tooltip", "The language of this inspector. Modular Avatar and other tools that use NDMF share this choice."),
             };
             languagePicker.AddToClassList(BaseField<string>.alignedFieldUssClassName);
+            ShaderPropertyFields.GrowWithLabel(languagePicker);
             languagePicker.RegisterValueChangedCallback(_ =>
             {
                 int i = languagePicker.index;
@@ -1300,6 +1301,7 @@ namespace DocMe
                 tooltip = Ui("ui.queue.tooltip", "The order this material draws in. From Shader uses the shader's own queue."),
             };
             renderQueue.AddToClassList(BaseField<string>.alignedFieldUssClassName);
+            ShaderPropertyFields.GrowWithLabel(renderQueue);
             renderQueue.RegisterValueChangedCallback(_ =>
             {
                 int i = renderQueue.index;
@@ -1318,6 +1320,7 @@ namespace DocMe
                 tooltip = Ui("ui.instancing.tooltip", "Lets Unity draw many copies of this material in one go."),
             };
             instancing.AddToClassList(BaseField<bool>.alignedFieldUssClassName);
+            ShaderPropertyFields.GrowWithLabel(instancing);
             instancing.RegisterValueChangedCallback(e => SetMaterialFlag(instancing.label, m => m.enableInstancing = e.newValue));
             instancing.style.display = HasInstancing(shader) ? DisplayStyle.Flex : DisplayStyle.None;
             footer.Add(instancing);
@@ -1328,6 +1331,7 @@ namespace DocMe
                 tooltip = Ui("ui.gi.tooltip", "Lets baked lighting treat both sides of the mesh as lit surfaces."),
             };
             doubleSidedGI.AddToClassList(BaseField<bool>.alignedFieldUssClassName);
+            ShaderPropertyFields.GrowWithLabel(doubleSidedGI);
             doubleSidedGI.RegisterValueChangedCallback(e => SetMaterialFlag(doubleSidedGI.label, m => m.doubleSidedGI = e.newValue));
             footer.Add(doubleSidedGI);
 
@@ -1337,6 +1341,7 @@ namespace DocMe
                 tooltip = Ui("ui.classic.tooltip", "Draws every DocMe shader material with the older inspector. Turn it off there to come back to this one."),
             };
             classic.AddToClassList(BaseField<bool>.alignedFieldUssClassName);
+            ShaderPropertyFields.GrowWithLabel(classic);
             classic.RegisterValueChangedCallback(e =>
             {
                 ShaderUiServices.Classic = e.newValue;
