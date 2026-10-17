@@ -256,13 +256,16 @@ namespace DocMe
         }
 
         /// <summary>Updates the Shader UI's own language files from the texts in its code. Returns the files written.</summary>
-        public static List<string> UpdateShaderUi()
+        public static List<string> UpdateShaderUi() => UpdateShaderUi(ShaderTexts.UiBaseName);
+
+        /// <summary>Test seam: updates the files named "baseName.code.po" from the Shader UI's texts.</summary>
+        internal static List<string> UpdateShaderUi(string baseName)
         {
             var written = new List<string>();
             var wanted = UiKeys(out _);
-            foreach (var path in ShaderTexts.FindPaths(ShaderTexts.UiBaseName))
+            foreach (var path in ShaderTexts.FindPaths(baseName))
             {
-                string code = ShaderTexts.CodeOf(path, ShaderTexts.UiBaseName);
+                string code = ShaderTexts.CodeOf(path, baseName);
                 if (ShaderUiLanguage.Normalize(code) == ShaderUiLanguage.English)
                     continue;
                 var file = LoadOrWarn(path);
