@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.2.0](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.1.0...1.2.0) (2026-10-18)
+
+
+### Features
+
+* add a [Dropdown] attribute for lists longer than seven entries ([58f9f2b](https://github.com/DocMeVR/SimpleShaderGUI/commit/58f9f2b31c059c0a48bd0cb52ad3a00da9caf945))
+* hide the alpha of a colour with [NoAlpha] ([b5fff42](https://github.com/DocMeVR/SimpleShaderGUI/commit/b5fff4222b3a057de4100ed3a6598189ca765dae))
+* **localization:** add a tool that keeps language files in step with the shader ([c13d4dc](https://github.com/DocMeVR/SimpleShaderGUI/commit/c13d4dc51d542385bc17dff916bf48262f75a9c7))
+* **localization:** carry translated labels, tooltips, entries and section titles in the layout ([de0cff8](https://github.com/DocMeVR/SimpleShaderGUI/commit/de0cff86d018c936947a75a1a9f15f79d436e0f9))
+* **localization:** find language files by name and resolve texts with fallbacks ([e695c27](https://github.com/DocMeVR/SimpleShaderGUI/commit/e695c275a47bde1ac2c869efffd0b6e26f08f317))
+* **localization:** read and write gettext language files ([80cb32f](https://github.com/DocMeVR/SimpleShaderGUI/commit/80cb32fc4200d62860bd65f2f7c4eb7a18449c52))
+* **localization:** share the inspector language with NDMF ([ea597b7](https://github.com/DocMeVR/SimpleShaderGUI/commit/ea597b7f304bec65834694dc032f955a02d180ae))
+* **localization:** ship the inspector's own texts in Japanese ([6c863df](https://github.com/DocMeVR/SimpleShaderGUI/commit/6c863dfcc0ac7b8bd47d2175c14460cc24d005fd))
+* **localization:** show the inspector in the chosen language with a Language switch ([fc580f2](https://github.com/DocMeVR/SimpleShaderGUI/commit/fc580f2f4fd348c54ab098e5ff356a19cc079f93))
+* **localization:** translate the classic inspector and the fallback bake button ([2b37521](https://github.com/DocMeVR/SimpleShaderGUI/commit/2b37521f0744a00d6f0e0369c58f241f697d5567))
+
+
+### Bug Fixes
+
+* let a field row grow when its label wraps ([3406520](https://github.com/DocMeVR/SimpleShaderGUI/commit/340652021355a4be8988a2c6f761b18cad2160e4))
+* let footer rows and the language switch grow with a wrapped label too ([d31da9c](https://github.com/DocMeVR/SimpleShaderGUI/commit/d31da9c91bb2b71c043ddde03ab0ee514fd6c65f))
+* **localization:** draw Japanese with a TextCore font asset ([1ed5105](https://github.com/DocMeVR/SimpleShaderGUI/commit/1ed5105b218206bf3db622b81d6f0c2899b93b22))
+* **localization:** find the changed-mark text and translate only the first header ([dfd12f9](https://github.com/DocMeVR/SimpleShaderGUI/commit/dfd12f9dc5c31c837f27827220122b0961d49df0))
+* **localization:** never rewrite a language file the reader cannot read cleanly ([8c525a3](https://github.com/DocMeVR/SimpleShaderGUI/commit/8c525a344d52450782551a715875ca841053d29f))
+
+
+### Performance Improvements
+
+* **localization:** check the Config attribute cheaply in the Assets menu ([4afd656](https://github.com/DocMeVR/SimpleShaderGUI/commit/4afd656185d8eee1af0cf288dc23dcf76afc0994))
+
 ## [1.1.0](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.0.0...1.1.0) (2026-10-12)
 
 
