@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.2.1...1.2.2) (2026-10-31)
+
+
+### Bug Fixes
+
+* leave the bundled Assets/DocMe/ShaderUI copy alone and ask to delete it instead ([d41f163](https://github.com/DocMeVR/SimpleShaderGUI/commit/d41f16393dc0b04964f87296721d6927190c2179))
+
 ## [1.2.1](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.2.0...1.2.1) (2026-10-31)
 
 

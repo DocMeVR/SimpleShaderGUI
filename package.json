@@ -1,7 +1,7 @@
 {
   "name": "com.docme.shader-ui",
   "displayName": "DocMe Simple Shader UI",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "unity": "2022.3",
   "description": "An attribute-driven material inspector for built-in pipeline shaders: collapsible sections, tooltips, help boxes, search, conditional properties, section toggles and a banner with links, all from the shader's Properties block and an optional config asset. No per-shader inspector code. Older DocMe shaders from Booth put a copy in Assets/DocMe/ShaderUI, so delete that folder before adding this package.",
   "author": {
