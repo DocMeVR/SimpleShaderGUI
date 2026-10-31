@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.2.0...1.2.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* open only web links from the inspector banner and link row ([0acc9ee](https://github.com/DocMeVR/SimpleShaderGUI/commit/0acc9eececcfa2ffc77033f17f209894145d5b0a))
+* remove the bundled Assets/DocMe/ShaderUI copy when VCC installs the package ([9022286](https://github.com/DocMeVR/SimpleShaderGUI/commit/90222864d4af9c78a4e098f94a194d228599c4b7))
+
 ## [1.2.0](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.1.0...1.2.0) (2026-10-18)
 
 
