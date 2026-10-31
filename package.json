@@ -3,15 +3,12 @@
   "displayName": "DocMe Simple Shader UI",
   "version": "1.2.1",
   "unity": "2022.3",
-  "description": "An attribute-driven material inspector for built-in pipeline shaders: collapsible sections, tooltips, help boxes, search, conditional properties, section toggles and a banner with links, all from the shader's Properties block and an optional config asset. No per-shader inspector code.",
+  "description": "An attribute-driven material inspector for built-in pipeline shaders: collapsible sections, tooltips, help boxes, search, conditional properties, section toggles and a banner with links, all from the shader's Properties block and an optional config asset. No per-shader inspector code. A DocMe shader from Booth brings its own copy in Assets/DocMe/ShaderUI, so delete that folder before adding this package.",
   "author": {
     "name": "DocMe",
     "email": "docme2nd@gmail.com"
   },
   "license": "MIT",
-  "legacyFolders": {
-    "Assets\\DocMe\\ShaderUI": ""
-  },
   "documentationUrl": "https://github.com/DocMeVR/SimpleShaderGUI#readme",
   "changelogUrl": "https://github.com/DocMeVR/SimpleShaderGUI/blob/main/CHANGELOG.md",
   "keywords": [

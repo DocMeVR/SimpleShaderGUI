@@ -13,9 +13,9 @@ the `.unitypackage` (or the `.zip` for a package folder) from the
 [Releases](https://github.com/DocMeVR/SimpleShaderGUI/releases) page and import it
 into a Unity 2022.3 project.
 
-DocMe shaders from Booth bring their own copy in `Assets/DocMe/ShaderUI`. Keep only one
-copy, because two don't compile. Both use the same asset ids, so you can delete that
-folder and use the package instead.
+DocMe shaders from Booth bring their own copy in `Assets/DocMe/ShaderUI`. Delete that
+folder before you add the package, because two copies don't compile. Both use the same
+asset ids, so the shaders keep working with the package.
 
 ## Setup
 
