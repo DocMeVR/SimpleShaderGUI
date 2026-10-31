@@ -95,6 +95,12 @@ namespace DocMe
                 return;
             if (!url.Contains("://"))
                 url = "https://" + url;
+            // a config from any package can hold the link, and a file:// one would start a program
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            {
+                Debug.LogWarning("[DocMe Shader UI] only web links open from the inspector, not " + url);
+                return;
+            }
             if (UrlOpener != null)
                 UrlOpener(url);
             else
