@@ -7,9 +7,15 @@ block and an optional config asset. No per-shader inspector code.
 
 ## Install
 
-Download the `.unitypackage` (or the `.zip` for a package folder) from the
+Add the DocMe listing to the VRChat Creator Companion (open https://docmevr.github.io/vpm
+and press *Add to VCC*), then add **DocMe Simple Shader UI** to your project. Or download
+the `.unitypackage` (or the `.zip` for a package folder) from the
 [Releases](https://github.com/DocMeVR/SimpleShaderGUI/releases) page and import it
 into a Unity 2022.3 project.
+
+DocMe shaders from Booth bring their own copy in `Assets/DocMe/ShaderUI`. Keep only one
+copy, because two don't compile. Both use the same asset ids, so you can delete that
+folder and use the package instead.
 
 ## Setup
 
