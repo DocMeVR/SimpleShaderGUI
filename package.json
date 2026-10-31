@@ -9,6 +9,9 @@
     "email": "docme2nd@gmail.com"
   },
   "license": "MIT",
+  "legacyFolders": {
+    "Assets\\DocMe\\ShaderUI": ""
+  },
   "documentationUrl": "https://github.com/DocMeVR/SimpleShaderGUI#readme",
   "changelogUrl": "https://github.com/DocMeVR/SimpleShaderGUI/blob/main/CHANGELOG.md",
   "keywords": [
