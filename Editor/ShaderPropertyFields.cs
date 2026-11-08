@@ -42,6 +42,9 @@ namespace DocMe
         public bool alwaysReadOnly;
         public Action<MaterialProperty> pull;
 
+        /// <summary>Set by a decoration that shows values of its own, such as the [VRCFallback] dropdown; runs after pull.</summary>
+        public Action<MaterialProperty> decorationPull;
+
         public ShaderPropertyType type;
 
         /// <summary>Writes a value into the property the way the row's own field does, keywords included (Paste and Reset).</summary>
@@ -98,6 +101,7 @@ namespace DocMe
         public const string ThumbEmptyClass = "docme-si-thumb--empty";
         public const string PowerValueClass = "docme-si-power-value";
         public const string NormalFixClass = "docme-si-normal-fix";
+        public const string FallbackClass = "docme-si-fallback";
 
         public const string KindBridge = "bridge";
         public const string KindSlider = "slider";
@@ -136,6 +140,7 @@ namespace DocMe
             public string name;
             public string[] args;
             public MaterialPropertyDrawer custom;
+            public bool fallback;
         }
 
         sealed class Plan
@@ -152,6 +157,16 @@ namespace DocMe
             row.type = shader.GetPropertyType(item.index);
             row.defaultValue = ShaderValue.DefaultOf(shader, item.index);
             row.assign ??= PlainAssign(row, shader);
+            if (row.decorationPull != null)
+            {
+                var own = row.pull;
+                var decorations = row.decorationPull;
+                row.pull = p =>
+                {
+                    own?.Invoke(p);
+                    decorations(p);
+                };
+            }
             return row;
         }
 
@@ -209,7 +224,7 @@ namespace DocMe
             if (type != ShaderPropertyType.Float && type != ShaderPropertyType.Range && type != ShaderPropertyType.Int)
                 return false;
             var plan = PlanFor(shader, item);
-            if (plan.unknownDrawer || plan.decorations.Exists(d => d.custom != null))
+            if (plan.unknownDrawer || plan.decorations.Exists(d => d.custom != null || d.fallback))
                 return false;
             switch (plan.drawer)
             {
@@ -288,7 +303,9 @@ namespace DocMe
             for (int i = 0; i < plan.decorations.Count; i++)
             {
                 var decoration = plan.decorations[i];
-                if (decoration.custom != null)
+                if (decoration.fallback)
+                    AddFallbackDropdown(row, shader);
+                else if (decoration.custom != null)
                     AddDecoratorContainer(host, row, decoration.custom, i);
                 else
                 {
@@ -348,6 +365,11 @@ namespace DocMe
                 if (SpaceNames.Contains(name) || HeaderNames.Contains(name))
                 {
                     plan.decorations.Add(new Decoration { name = name, args = args });
+                    continue;
+                }
+                if (name == VRCFallback.AttributeName)
+                {
+                    plan.decorations.Add(new Decoration { name = name, args = args, fallback = true });
                     continue;
                 }
 
@@ -468,6 +490,63 @@ namespace DocMe
         }
 
         /// <summary>
+        /// [VRCFallback]: a native dropdown for the selected materials' "VRCFallback" tag, above the property's own field. It
+        /// writes the materials directly (the tag is no material property) and reads them again on every pull of the row.
+        /// </summary>
+        static void AddFallbackDropdown(ShaderPropertyRow row, Shader shader)
+        {
+            var texts = ShaderTexts.For(null);
+            string shaderTag = VRCFallback.ShaderTag(shader);
+            var known = VRCFallback.Entries(texts, shaderTag);
+            var entries = known;
+            Material[] shownFor = Array.Empty<Material>();
+            var dropdown = new MixedDropdownField(VRCFallback.Label(texts), known.Select(e => e.path).ToList(), -1)
+            {
+                name = row.item.name + VRCFallback.FieldSuffix,
+                tooltip = VRCFallback.Tooltip(texts),
+                formatSelectedValueCallback = VRCFallback.Shown,
+            };
+            dropdown.AddToClassList(BaseField<string>.alignedFieldUssClassName);
+            dropdown.AddToClassList(FallbackClass);
+            UndoGrouping.Attach(dropdown);
+            row.root.Add(dropdown);
+            GrowWithLabel(dropdown);
+            dropdown.Q<TextElement>(className: BasePopupField<string, string>.textUssClassName)
+                ?.RegisterCallback<GeometryChangedEvent>(e => GrowWithText((TextElement)e.target));
+
+            void Show(Material[] materials)
+            {
+                shownFor = materials;
+                string current = VRCFallback.Current(materials, shaderTag, out bool mixed);
+                int index = mixed ? -1 : VRCFallback.IndexOf(known, current);
+                var wanted = known;
+                if (!mixed && index < 0)
+                {
+                    wanted = new List<VRCFallback.Entry>(known) { VRCFallback.Other(texts, current) };
+                    index = wanted.Count - 1;
+                }
+                if (wanted != entries)
+                {
+                    entries = wanted;
+                    dropdown.choices = entries.Select(e => e.path).ToList();
+                }
+                dropdown.SetShown(index >= 0 ? entries[index].path : "", mixed);
+            }
+
+            dropdown.RegisterValueChangedCallback(_ =>
+            {
+                int i = dropdown.index;
+                var materials = shownFor;
+                if (i < 0 || i >= entries.Count || materials.Length == 0 || Array.Exists(materials, m => m == null))
+                    return;
+                VRCFallback.Write(materials, entries[i].value, VRCFallback.UndoName(texts, materials));
+                UndoGrouping.Collapse(dropdown);
+                Show(materials);
+            });
+            row.decorationPull = p => Show(VRCFallback.MaterialsOf(p.targets));
+        }
+
+        /// <summary>
         /// A drawer that throws while it draws is left out from then on, after one console line, the way Unity's own inspector
         /// contains it: rethrown, the exception would stop UI Toolkit from drawing the rest of the window every frame.
         /// </summary>
@@ -526,7 +605,7 @@ namespace DocMe
         /// The layout sizes a wrapping label at its exact fractional width, the text is drawn at the rounded width:
         /// a label whose text just fits the first can need a second line in the second.
         /// </summary>
-        static void GrowWithText(Label label)
+        static void GrowWithText(TextElement label)
         {
             var rect = label.contentRect;
             if (string.IsNullOrEmpty(label.text) || rect.width <= 0f || label.resolvedStyle.whiteSpace != WhiteSpace.Normal)

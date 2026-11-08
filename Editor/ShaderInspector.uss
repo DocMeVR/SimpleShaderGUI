@@ -4,6 +4,10 @@
 /* Long property names wrap onto a second line instead of being cut off at narrow inspector widths. */
 .docme-si .unity-base-field__label { white-space: normal; }
 
+/* A long VRChat Fallback choice wraps the same way, and its box grows with it. */
+.docme-si-fallback .unity-base-popup-field__input { height: auto; }
+.docme-si-fallback .unity-base-popup-field__text { white-space: normal; }
+
 .docme-si-banner { margin-bottom: 4px; flex-shrink: 0; }
 .docme-si-clickable { cursor: link; }
 .docme-si-banner-links { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; margin-bottom: 4px; }

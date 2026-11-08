@@ -15,6 +15,7 @@ namespace DocMe
     //   [ShowIf(_Prop)] / [ShowIf(_Prop, value)]         show only while _Prop is not 0, or equals value
     //   [SectionToggle]                                  first property of a section as a checkbox in its header
     //   [NoAlpha]                                        colour field without alpha, for a colour whose alpha the shader ignores
+    //   [VRCFallback]                                    VRChat Fallback dropdown above the property (the material's VRCFallback tag)
     //
     // Banner, banner buttons, link sections and section header links live in the
     // SimpleShaderConfig asset, edited in its Inspector. The shader only names it once.
