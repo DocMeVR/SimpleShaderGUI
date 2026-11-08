@@ -175,3 +175,47 @@ msgstr "設定を検索します。s: で始めるとセクションを検索し
 #. en: Draws every DocMe shader material with this older inspector. Turn it off to use the newer one.
 msgid "ui.classic.back"
 msgstr "DocMe シェーダーのすべてのマテリアルをこの旧インスペクターで表示します。オフにすると新しいインスペクターに戻ります。"
+
+#. en: VRChat Fallback
+msgid "ui.fallback"
+msgstr "VRChat フォールバック"
+
+#. en: Picks the shader VRChat draws this material with for players who block custom shaders.
+msgid "ui.fallback.tooltip"
+msgstr "カスタムシェーダーを非表示にしているプレイヤーに、VRChat がこのマテリアルをどのシェーダーで表示するかを選びます。"
+
+#. en: Shader default ({0})
+msgid "ui.fallback.default"
+msgstr "シェーダーの初期値（{0}）"
+
+#. en: Hidden
+msgid "ui.fallback.hidden"
+msgstr "非表示"
+
+#. en: Opaque
+msgid "ui.fallback.opaque"
+msgstr "不透明"
+
+#. en: Cutout
+msgid "ui.fallback.cutout"
+msgstr "カットアウト"
+
+#. en: Transparent
+msgid "ui.fallback.transparent"
+msgstr "半透明"
+
+#. en: Fade
+msgid "ui.fallback.fade"
+msgstr "フェード"
+
+#. en: One sided
+msgid "ui.fallback.oneSided"
+msgstr "片面"
+
+#. en: Double sided
+msgid "ui.fallback.doubleSided"
+msgstr "両面"
+
+#. en: Other: {0}
+msgid "ui.fallback.other"
+msgstr "その他: {0}"

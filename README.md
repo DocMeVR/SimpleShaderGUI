@@ -47,6 +47,23 @@ don't compile. Both use the same asset ids, so the shaders keep working with the
 | `[ShowIf(_Prop)]` / `[ShowIf(_Prop, value)]` | Shows the property only while `_Prop` is not 0, or only while `_Prop` equals `value`. `_Prop` is a Float, Range or Int property, such as a Toggle, ToggleUI or Enum. On the property that carries `[Foldable]`, it shows or hides the whole section, header included |
 | `[SectionToggle]` | On the first property of a section, when it is a `[Toggle]`, `[ToggleOff]`, `[ToggleUI]` or plain Float: draws it as a checkbox in the section header, left of the title, with the property's `[Tip]` as its tooltip. Clicking it never opens or closes the section. While it is off, the section's rows are dimmed but stay editable. A `[Help]`, `[Space]` or `[Header]` on that property is not drawn |
 | `[NoAlpha]` | On a Color property: its colour field shows no alpha, for a colour whose alpha the shader does not read. Unity knows no drawer by that name, so it prints nothing. The older inspector draws Unity's own colour field and keeps the alpha |
+| `[VRCFallback]` | On the texture VRChat's fallback shows (`_MainTex`): a **VRChat Fallback** dropdown above it, which picks how players who block custom shaders see the material. See below |
+
+`[VRCFallback]` sets the material's own `VRCFallback` tag, which VRChat reads before the shader's tag. Put it on
+`_MainTex`, the texture VRChat's fallback shows, for example together with the bake button:
+
+```
+[VRCFallback] [BakeFallback] _MainTex ("Fallback Image", 2D) = "white" {}
+```
+
+The first entry, **Shader default**, removes the material's tag, so the shader's own `"VRCFallback"` tag counts; the
+entry names it, or says Standard when the shader has none (VRChat then guesses from the shader's name, and uses
+Standard when the name tells it nothing). Then come Hidden (players see nothing), each shader type
+(Unlit, Toon, Standard, VertexLit, MobileToon, Matcap, Particle, Sprite) with its look (Opaque, Cutout, Transparent,
+Fade) and its sides (One sided, Double sided), and Toon Standard and Toon Standard Outline, which take neither. A tag
+the list does not know, set by another tool, shows as Other and stays until you pick another entry. A change writes
+every selected material as one undo step. The VRChat SDK removes the material's tag when the material gets another
+shader. The older inspector shows the same dropdown.
 
 Attribute arguments accept plain text only (a ShaderLab limitation), so URLs,
 paths, and icons live in the config asset and are edited in its Inspector.
@@ -158,6 +175,7 @@ own Material editor and under Poiyomi's alike, and every shader that names
   cut out at the same size as the real shader. While it renders, the global
   float `_DocMeBaking` is 1: a shader that supports baking freezes its animations then
   and draws a soft outline. Only shaders that carry the attribute show the button.
+  `[VRCFallback]` on the same property picks the fallback per material instead of per shader.
 - **Undo and multi select** behave as in Unity's inspector: every change goes
   through the same material properties Unity hands to the inspector. Selecting
   several materials shows differing values as mixed, and a change writes all of them.
@@ -232,6 +250,8 @@ the other way round works, since both assemblies are referenced automatically.
 - `Editor/ShaderInspector.uss`: the look.
 - `Editor/SimpleShaderConfigEditor.cs`: config Inspector with wiring helpers.
 - `Editor/SectionNameDrawer.cs`: section-name dropdown for config fields.
+- `Editor/BakeFallbackDecorator.cs`: the `[BakeFallback]` button and the picture it renders.
+- `Editor/VRCFallbackDecorator.cs`: the `[VRCFallback]` entries and tag, and its dropdown in the older inspector.
 
 ## How this was made
 
