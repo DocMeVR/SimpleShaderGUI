@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.2.2...1.3.0) (2026-11-08)
+
+
+### Features
+
+* pick the VRChat fallback per material with [VRCFallback] ([#6](https://github.com/DocMeVR/SimpleShaderGUI/issues/6)) ([509d1dc](https://github.com/DocMeVR/SimpleShaderGUI/commit/509d1dcba71908ccc95b2da4efabc56ef8b868a2))
+
 ## [1.2.2](https://github.com/DocMeVR/SimpleShaderGUI/compare/1.2.1...1.2.2) (2026-10-31)
 
 
