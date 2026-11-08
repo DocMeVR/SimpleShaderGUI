@@ -16,6 +16,8 @@ Shader "DocMe/Example/Showcase"
 
         [Category(Surface)]
         [Foldable(Main)]
+        [Tip(The picture players see when they block custom shaders)] [VRCFallback]
+        _MainTex ("Fallback Image", 2D) = "white" {}
         [Help(Smoothness controls how glossy the surface looks.)]
         _Smoothness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
@@ -30,7 +32,7 @@ Shader "DocMe/Example/Showcase"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque" "VRCFallback"="Unlit" }
         Pass
         {
             CGPROGRAM
